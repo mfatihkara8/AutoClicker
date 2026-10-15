@@ -30,3 +30,6 @@ build/
 *.cer
 *.mobileprovision
 *.provisionprofile
+
+# Private session log (see CLAUDE.md)
+SESSION_NOTES.md

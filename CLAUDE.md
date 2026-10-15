@@ -45,6 +45,12 @@ xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'plat
 
 ## Workflow
 
+**Session notes:** `SESSION_NOTES.md` is a private, git-ignored log.
+- At the start of a session, read its "Where we left off" section and its environment facts first. If the file is missing, this is a fresh clone; ask the user where things stand.
+- When the user ends a session:
+  - Update "Where we left off".
+  - Add a dated entry at the top of "Session log", covering what was done, the decisions made and the gotchas.
+
 1. Pick the next task from the **Now** section of `TODO.md`. Read its entry in `docs/TASKS.md`.
 2. Implement it on a `feat/<task-id>-short-name` branch, using Conventional Commits that reference the task ID.
 3. When it's done:
