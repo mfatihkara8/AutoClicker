@@ -59,3 +59,6 @@ The app is **not sandboxed** and is distributed outside the Mac App Store; see [
 | [docs/RULES.md](docs/RULES.md) | Coding and contribution rules |
 | [TODO.md](TODO.md) | Live progress tracker |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
+
+## License
+[MIT](LICENSE)
