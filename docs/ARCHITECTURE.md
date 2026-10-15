@@ -1,0 +1,158 @@
+# Architecture
+
+This document describes how the requirements in [SPEC.md](SPEC.md) are structured in code. Rationale for the fixed choices lives in [DECISIONS.md](DECISIONS.md).
+
+## Layers
+
+```
+┌──────────────────────── MainActor ────────────────────────┐
+│  Views (SwiftUI)                                          │
+│    MainView, cards, PermissionBanner, MenuBarContent      │
+│          │ bindings / intents                             │
+│          ▼                                                │
+│  MainViewModel (@Observable)    PermissionManager         │
+│    - owns ClickConfiguration     (@Observable, polls AX)  │
+│    - samples ClickCounter @ 10–20 Hz                      │
+│    - saves via SettingsStore                              │
+└──────────┬───────────────────────────────▲────────────────┘
+           │ start(config) / stop()        │ onStop(reason) (hops to MainActor)
+           ▼                               │
+┌──────────────── Click queue (serial DispatchQueue) ───────┐
+│  ClickEngine                                              │
+│    ClickScheduler  ──deadline──▶  tick()                  │
+│    tick(): FailsafeMonitor.check → resolve target         │
+│            → EventPosting.post(click) → ClickCounter += 1 │
+│            → StopCondition.isSatisfied?                   │
+└───────────────────────────────────────────────────────────┘
+           ▲
+           │ Carbon hotkey callbacks (main run loop)
+   CarbonHotkeyManager (HotkeyProviding): F6 toggles, ESC stops
+```
+
+**Rules:**
+- Only the ViewModel talks to the engine.
+- The engine never imports SwiftUI and never references the ViewModel.
+- Cross-boundary values (`ClickConfiguration`, `StopReason`) are `Sendable` value types.
+
+## Folder layout
+
+```
+AutoClicker/                      Xcode project root
+├── AutoClicker/
+│   ├── App/
+│   │   └── AutoClickerApp.swift        @main; WindowGroup + optional MenuBarExtra; composition root
+│   ├── Features/
+│   │   ├── Main/
+│   │   │   ├── MainView.swift
+│   │   │   └── MainViewModel.swift     @Observable @MainActor
+│   │   ├── Components/                 PermissionBanner, StatusCard, ClickTypeCard,
+│   │   │                               IntervalCard, TargetCard, StopConditionCard
+│   │   └── MenuBar/
+│   │       └── MenuBarContent.swift
+│   ├── Core/
+│   │   ├── Engine/
+│   │   │   ├── ClickEngine.swift
+│   │   │   ├── ClickScheduler.swift
+│   │   │   ├── ClickConfiguration.swift
+│   │   │   ├── ClickType.swift
+│   │   │   ├── StopCondition.swift
+│   │   │   └── ClickCounter.swift
+│   │   ├── Events/
+│   │   │   ├── EventPosting.swift      protocol
+│   │   │   └── CGEventPoster.swift
+│   │   ├── Hotkeys/
+│   │   │   ├── HotkeyProviding.swift   protocol
+│   │   │   └── CarbonHotkeyManager.swift
+│   │   ├── Permissions/
+│   │   │   ├── PermissionChecking.swift protocol
+│   │   │   ├── AccessibilityPermissionChecker.swift
+│   │   │   └── PermissionManager.swift @Observable @MainActor
+│   │   ├── Safety/
+│   │   │   └── FailsafeMonitor.swift
+│   │   └── Geometry/
+│   │       └── ScreenGeometry.swift
+│   ├── Services/
+│   │   └── SettingsStore.swift
+│   └── Assets.xcassets                 Info.plist is generated (GENERATE_INFOPLIST_FILE);
+│                                       sandbox/hardened runtime are build settings
+├── AutoClickerTests/                  Swift Testing
+│   ├── Mocks/                          MockEventPoster, MockPermissionChecker, MockHotkeyProvider
+│   ├── ClickEngineTests.swift
+│   ├── ClickSchedulerTests.swift
+│   ├── StopConditionTests.swift
+│   ├── ScreenGeometryTests.swift
+│   └── SettingsStoreTests.swift
+└── AutoClickerUITests/                XCTest UI tests
+```
+
+## Type responsibilities
+
+### Engine (`Core/Engine`)
+
+| Type | Kind | Responsibility |
+|---|---|---|
+| `ClickType` | `enum`, `Sendable`, `Codable` | `.left`, `.right`, `.middle`, `.double` |
+| `ClickTarget` | `enum` | `.currentCursor` or `.fixed(CGPoint)`. The point is in CG global space. |
+| `ClickInterval` | `struct` | Hours, minutes, seconds and milliseconds. Converts to `Duration` and clamps to ≥ 1 ms. Has an optional jitter in ms. |
+| `StopCondition` | `enum` | `.never`, `.afterClicks(Int)` or `.afterDuration(Duration)`. Exposes `isSatisfied(clicks:elapsed:)`. |
+| `ClickConfiguration` | `struct`, `Sendable`, `Codable` | Aggregates the click type, interval, target and stop condition. It is the persisted settings value. |
+| `ClickCounter` | `final class`, `Sendable` | Wraps `OSAllocatedUnfairLock<Int>` and provides `increment()`, `value` and `reset()`. |
+| `ClickScheduler` | `final class` | Drives the click loop on a serial queue using `DispatchSourceTimer`. Computes the absolute deadline `start + n × interval`, plus jitter. |
+| `ClickEngine` | `final class` | Owns the scheduler and coordinates each tick (see below). Takes `start(_:)` and `stop()`. Reports the end of a run through `onStop(StopReason)`. |
+| `StopReason` | `enum` | `.user`, `.hotkey`, `.emergencyEscape`, `.cornerFailsafe`, `.conditionMet` or `.permissionLost` |
+
+`ClickEngine` does the following on each tick:
+1. Run the failsafe check.
+2. Resolve the target position.
+3. Post the click.
+4. Increment the counter.
+5. Check the stop condition.
+
+### Services and adapters
+
+| Type | Responsibility |
+|---|---|
+| `EventPosting` | `func post(_ type: ClickType, at point: CGPoint)` |
+| `CGEventPoster` | Implements `EventPosting`. Posts mouse-down/up events through a `.hidSystemState` source to `.cghidEventTap`:<br>• Middle click uses `.otherMouseDown/Up` with `.center`.<br>• Double click sets `kCGMouseEventClickState` to 2 on the second pair. |
+| `HotkeyProviding` | `register(_ hotkey:, handler:)` and `unregister(_:)` |
+| `CarbonHotkeyManager` | Implements `HotkeyProviding` with `RegisterEventHotKey`:<br>• The handler context is passed via `userData`.<br>• All hotkeys are unregistered in `deinit`. |
+| `PermissionChecking` | `isTrusted` and `requestTrust()` |
+| `AccessibilityPermissionChecker` | Wraps `AXIsProcessTrusted` and `AXIsProcessTrustedWithOptions`. |
+| `PermissionManager` | Exposes the current state to the UI and opens System Settings:<br>• While permission is missing and the window is visible, it polls about every 1 s.<br>• It stops polling once permission is granted. |
+| `FailsafeMonitor` | Does two checks:<br>• `shouldStop(cursor:)` returns true when the cursor is within 2 px of a screen corner.<br>• `isInsideOwnWindow(_ point:)` checks the point against window frames snapshotted on the main actor. |
+| `ScreenGeometry` | The only place that converts between AppKit and CG coordinates. Also provides the screen corners and the current cursor position via `CGEvent(source: nil)?.location`. |
+| `SettingsStore` | Loads and saves `ClickConfiguration` as JSON in `UserDefaults`. The schema is versioned. |
+
+## Key flows
+
+**Start:**
+1. The user clicks Start or presses F6.
+2. `MainViewModel` checks permission and snapshots the configuration.
+3. `MainViewModel` registers the ESC hotkey and calls `engine.start(config)`.
+4. A UI sampling timer starts.
+
+**Stop:** a stop can come from four places:
+- the user,
+- F6 or ESC,
+- a failsafe,
+- the stop condition.
+
+Each one leads to `engine.stop()`, then `onStop(reason)`, then the ViewModel on the main actor. The ViewModel then:
+- unregisters ESC,
+- stops the sampling timer,
+- reads the final count,
+- shows the stop reason.
+
+**Pick Location:**
+1. The ViewModel runs a 3 s countdown on the main actor.
+2. It reads `ScreenGeometry.currentCursorLocation()`.
+3. It stores the result as `.fixed(point)`.
+
+## Composition
+`AutoClickerApp` builds the concrete dependencies and injects them into `MainViewModel` through its initializer:
+- `CGEventPoster`,
+- `CarbonHotkeyManager`,
+- `AccessibilityPermissionChecker`,
+- `SettingsStore`.
+
+Tests inject the mocks from `AutoClickerTests/Mocks`. Singletons are not used.
