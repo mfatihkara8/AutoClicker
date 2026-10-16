@@ -61,7 +61,8 @@ AutoClicker/                      Xcode project root
 │   │   │   ├── EventPosting.swift      protocol
 │   │   │   └── CGEventPoster.swift
 │   │   ├── Hotkeys/
-│   │   │   ├── HotkeyProviding.swift   protocol
+│   │   │   ├── Hotkey.swift            key code + Carbon modifiers; .f6, .escape
+│   │   │   ├── HotkeyProviding.swift   protocol + HotkeyRegistrationError
 │   │   │   └── CarbonHotkeyManager.swift
 │   │   ├── Permissions/
 │   │   │   ├── PermissionChecking.swift protocol
@@ -93,7 +94,7 @@ AutoClicker/                      Xcode project root
 |---|---|---|
 | `ClickType` | `enum`, `Sendable`, `Codable` | `.left`, `.right`, `.middle`, `.double` |
 | `ClickTarget` | `enum` | `.currentCursor` or `.fixed(CGPoint)`. The point is in CG global space. |
-| `ClickInterval` | `struct` | Hours, minutes, seconds and milliseconds. Converts to `Duration` and clamps to ≥ 1 ms. Has an optional jitter in ms. |
+| `ClickInterval` | `struct` | Hours, minutes, seconds and milliseconds. Converts to `Duration` and clamps to ≥ 1 ms. Has an optional jitter in ms, capped at `(duration − 1 ms) / 2` so consecutive deadlines stay ≥ 1 ms apart; the scheduler adds `jitterOffset()` to each absolute deadline and never accumulates it. |
 | `StopCondition` | `enum` | `.never`, `.afterClicks(Int)` or `.afterDuration(Duration)`. Exposes `isSatisfied(clicks:elapsed:)`. |
 | `ClickConfiguration` | `struct`, `Sendable`, `Codable` | Aggregates the click type, interval, target and stop condition. It is the persisted settings value. |
 | `ClickCounter` | `final class`, `Sendable` | Wraps `OSAllocatedUnfairLock<Int>` and provides `increment()`, `value` and `reset()`. |
@@ -114,13 +115,14 @@ AutoClicker/                      Xcode project root
 |---|---|
 | `EventPosting` | `func post(_ type: ClickType, at point: CGPoint)` |
 | `CGEventPoster` | Implements `EventPosting`. Posts mouse-down/up events through a `.hidSystemState` source to `.cghidEventTap`:<br>• Middle click uses `.otherMouseDown/Up` with `.center`.<br>• Double click sets `kCGMouseEventClickState` to 2 on the second pair. |
-| `HotkeyProviding` | `register(_ hotkey:, handler:)` and `unregister(_:)` |
-| `CarbonHotkeyManager` | Implements `HotkeyProviding` with `RegisterEventHotKey`:<br>• The handler context is passed via `userData`.<br>• All hotkeys are unregistered in `deinit`. |
+| `Hotkey` | `Hashable`, `Sendable` value: Carbon key code and modifiers. Provides `.f6` and `.escape`. |
+| `HotkeyProviding` | `@MainActor`. `register(_ hotkey:, handler:) throws` (re-registering replaces the handler), `unregister(_:)`, `unregisterAll()` and `isRegistered(_:)`. Failures throw `HotkeyRegistrationError`. |
+| `CarbonHotkeyManager` | Implements `HotkeyProviding` with `RegisterEventHotKey`:<br>• The handler context is passed via `userData`.<br>• The Carbon event handler is installed lazily on the first registration.<br>• All hotkeys are unregistered in an `isolated deinit`. |
 | `PermissionChecking` | `isTrusted` and `requestTrust()` |
 | `AccessibilityPermissionChecker` | Wraps `AXIsProcessTrusted` and `AXIsProcessTrustedWithOptions`. |
 | `PermissionManager` | Exposes the current state to the UI and opens System Settings:<br>• While permission is missing and the window is visible, it polls about every 1 s.<br>• It stops polling once permission is granted. |
 | `FailsafeMonitor` | Does two checks:<br>• `shouldStop(cursor:)` returns true when the cursor is within 2 px of a screen corner.<br>• `isInsideOwnWindow(_ point:)` checks the point against window frames snapshotted on the main actor. |
-| `ScreenGeometry` | The only place that converts between AppKit and CG coordinates. Also provides the screen corners and the current cursor position via `CGEvent(source: nil)?.location`. |
+| `ScreenGeometry` | `Sendable` snapshot of the screen frames (`current()` reads `NSScreen` on the main actor). The only place that converts between AppKit and CG coordinates. Provides the screen corners, `isNearCorner(_:tolerance:)`, and the current cursor position via `CGEvent(source: nil)?.location` (optional; `nil` when unavailable). |
 | `SettingsStore` | Loads and saves `ClickConfiguration` as JSON in `UserDefaults`. The schema is versioned. |
 
 ## Key flows

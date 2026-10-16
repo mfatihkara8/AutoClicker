@@ -5,19 +5,27 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** M1, Permissions
+**Current milestone:** M2, Click engine (wave 2 of the parallel plan)
 
 ## Now
-Milestone M0 is complete. Next up is M1.
-- [ ] T-101: Add `PermissionChecking` and `AccessibilityPermissionChecker`
-- [ ] T-102: Add `PermissionManager`
-- [ ] T-103: Add `PermissionBanner`. Also confirm the T-002 follow-up: the Accessibility grant survives a rebuild.
+Wave 2 (parallel worktree agents):
+- [ ] T-204 → T-205 → T-302: `ClickScheduler`, `ClickEngine`, target resolution
+- [ ] T-404 + T-503: `FailsafeMonitor`, `SettingsStore`
+- [ ] Manual: SC-1 (banner hides within 2 s of the grant) and the T-002 follow-up (the grant survives a rebuild)
 
 ## Next
-- M2: Click engine (T-201 to T-205)
-- M3: Targeting and coordinates (T-301 to T-303)
+- Wave 3: T-501 `MainViewModel`, failsafe wiring, T-402 F6, T-403 scoped ESC, T-303 Pick Location
+- Wave 4: T-502 cards and `MainView`, T-504 `MenuBarExtra`
 
 ## Done
+- [x] T-401: `Hotkey`, `HotkeyProviding`, `CarbonHotkeyManager`, `MockHotkeyProvider`
+- [x] T-301: `ScreenGeometry` (AppKit ↔ CG conversion, corners, cursor)
+- [x] T-203: `ClickCounter` (`OSAllocatedUnfairLock`)
+- [x] T-202: `EventPosting`, `CGEventPoster`, `MockEventPoster`
+- [x] T-201: `ClickType`, `ClickTarget`, `ClickInterval`, `StopCondition`, `ClickConfiguration`
+- [x] T-103: `PermissionBanner` wired into `MainView` (SC-1 still to be checked manually)
+- [x] T-102: `PermissionManager` with visibility-driven 1 s polling
+- [x] T-101: `PermissionChecking` and `AccessibilityPermissionChecker`
 - [x] T-002: Signing and capabilities set (fixed Team `9J8JPZCUTL`, Sandbox off, Hardened Runtime on)
 - [x] T-003: Folder skeleton created; `ContentView` renamed to `MainView`
 - [x] T-004: Test targets and `AutoClickerTests/Mocks/` folder in place
