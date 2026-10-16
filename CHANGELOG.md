@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- App icon with light, dark and tinted appearances on macOS 26 and later (light icon on macOS 14 and 15), and a matching blue accent color.
 - Accessibility permission detection: a banner with "Open System Settings" and "Request Access" buttons, shown while permission is missing and hidden automatically about 1 s after it is granted.
 - Click configuration model: click type (left, right, middle, double), interval in h/m/s/ms with a 1 ms minimum and ± jitter, current-cursor or fixed target, and stop conditions (never, after N clicks, after a duration).
 - Click event posting through Core Graphics, including middle clicks and real double clicks (click state 2).
