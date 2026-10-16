@@ -41,8 +41,9 @@ final class SettingsStore {
     /// Returns the saved settings, or `.default` when nothing usable is stored.
     ///
     /// Version 1 settings keep their configuration and get F6 as the start/stop shortcut. A missing value, corrupt
-    /// data, a malformed body or a version this build does not know all fall back to `.default`. Settings are never
-    /// worth crashing over, and the next `save(_:)` overwrites the bad value.
+    /// data, a malformed body or a version this build does not know all fall back to `.default`. A well-formed
+    /// shortcut that `ShortcutValidator` rejects is replaced by F6. Settings are never worth crashing over, and the
+    /// next `save(_:)` overwrites the bad value.
     func load() -> AppSettings {
         guard let data = defaults.data(forKey: key) else {
             return .default
@@ -60,7 +61,8 @@ final class SettingsStore {
             switch header.version {
             case Self.currentVersion:
                 let envelope = try decoder.decode(Envelope.self, from: data)
-                return AppSettings(configuration: envelope.configuration, toggleHotkey: envelope.toggleHotkey)
+                return AppSettings(
+                    configuration: envelope.configuration, toggleHotkey: validated(envelope.toggleHotkey))
             case 1:
                 // Version 1 predates the configurable shortcut, when the start/stop hotkey was always F6.
                 let envelope = try decoder.decode(EnvelopeV1.self, from: data)
@@ -87,6 +89,14 @@ final class SettingsStore {
         } catch {
             logger.error("Could not encode settings: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    /// Returns `hotkey`, or F6 when the recorder could never have accepted it (for example Esc, which would clash with
+    /// the emergency stop). Only the shortcut is replaced; the click configuration next to it is still good.
+    private func validated(_ hotkey: Hotkey) -> Hotkey {
+        guard let rejection = ShortcutValidator.rejection(for: hotkey) else { return hotkey }
+        logger.error("Replacing invalid stored shortcut with F6: \(String(describing: rejection), privacy: .public)")
+        return .f6
     }
 
     // MARK: - Schema

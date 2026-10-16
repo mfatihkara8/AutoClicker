@@ -197,6 +197,19 @@ final class SettingsStoreTests {
         #expect(SettingsStore(defaults: defaults).load() == .default)
     }
 
+    @Test(arguments: [
+        #"{"keyCode":53,"modifiers":0}"#,  // Esc, reserved for the emergency stop
+        #"{"keyCode":40,"modifiers":0}"#,  // K without a modifier
+        #"{"keyCode":40,"modifiers":512}"#,  // ⇧K
+        #"{"keyCode":56,"modifiers":256}"#,  // Shift key on its own
+        #"{"keyCode":97,"modifiers":1024}"#,  // F6 with Caps Lock, not a shortcut modifier
+    ])
+    func invalidStoredShortcutFallsBackToF6AndKeepsTheConfiguration(hotkeyJSON: String) throws {
+        let configuration = try Self.json(of: Self.customConfiguration)
+        store(json: #"{"version":2,"configuration":"# + configuration + #","toggleHotkey":"# + hotkeyJSON + "}")
+        #expect(SettingsStore(defaults: defaults).load() == AppSettings(configuration: Self.customConfiguration))
+    }
+
     @Test(arguments: [0, SettingsStore.currentVersion + 1, 99])
     func unknownVersionLoadsTheDefault(version: Int) throws {
         // A valid body under a version this build does not understand must not be guessed at.
