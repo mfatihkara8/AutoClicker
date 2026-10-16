@@ -1,0 +1,75 @@
+import Foundation
+
+/// The text and symbols the menu bar extra shows for a given run state.
+///
+/// Kept as a plain value so the wording can be unit tested without building any SwiftUI view or menu.
+struct MenuBarPresentation: Equatable {
+    /// The SF Symbol shown in the menu bar while idle.
+    static let idleSymbolName = "cursorarrow.click"
+    /// The SF Symbol shown while clicking; the double click makes the active state visible at a glance.
+    static let runningSymbolName = "cursorarrow.click.2"
+
+    let isRunning: Bool
+    let totalClicks: Int
+    let lastStopReason: StopReason?
+    /// Whether F6 is registered. When it is not, the menu must not advertise it.
+    let isHotkeyAvailable: Bool
+    /// The locale used to format the click count; injected so tests do not depend on the machine's settings.
+    var locale: Locale = .current
+
+    /// The first, non-interactive line of the menu.
+    var statusText: String {
+        if isRunning {
+            let count = totalClicks.formatted(.number.locale(locale))
+            if totalClicks == 1 {
+                return String(
+                    localized: "Clicking: \(count) click",
+                    comment:
+                        "Menu bar status while running, for exactly one click; the argument is the formatted count.")
+            }
+            return String(
+                localized: "Clicking: \(count) clicks",
+                comment: "Menu bar status while running; the argument is the formatted total click count.")
+        }
+        guard let lastStopReason else {
+            return String(localized: "Idle", comment: "Menu bar status while not clicking and before any run ended.")
+        }
+        return String(
+            localized: "Idle — \(lastStopReason.displayText)",
+            comment: "Menu bar status while not clicking; the argument explains why the last run ended.")
+    }
+
+    /// The title of the Start/Stop item, with the F6 hint when the hotkey works.
+    ///
+    /// The hint is part of the title rather than a key equivalent: a menu key equivalent for F6 could fire alongside
+    /// the global Carbon hotkey while the menu is open and toggle the run twice.
+    var startStopTitle: String {
+        switch (isRunning, isHotkeyAvailable) {
+        case (true, true):
+            String(localized: "Stop Clicking (F6)", comment: "Menu bar item that stops clicking; F6 is the hotkey.")
+        case (true, false):
+            String(localized: "Stop Clicking", comment: "Menu bar item that stops clicking, when F6 is unavailable.")
+        case (false, true):
+            String(localized: "Start Clicking (F6)", comment: "Menu bar item that starts clicking; F6 is the hotkey.")
+        case (false, false):
+            String(localized: "Start Clicking", comment: "Menu bar item that starts clicking, when F6 is unavailable.")
+        }
+    }
+
+    /// The SF Symbol for the menu bar icon.
+    ///
+    /// Static, and keyed on the run state alone, so the icon's view observes `isRunning` but not the click count,
+    /// which changes 15 times a second while running.
+    static func symbolName(isRunning: Bool) -> String {
+        isRunning ? runningSymbolName : idleSymbolName
+    }
+
+    /// What VoiceOver reads for the menu bar icon, which has no visible text.
+    static func accessibilityLabel(isRunning: Bool) -> String {
+        if isRunning {
+            return String(
+                localized: "AutoClicker, clicking", comment: "Accessibility label of the menu bar icon while running.")
+        }
+        return String(localized: "AutoClicker, idle", comment: "Accessibility label of the menu bar icon while idle.")
+    }
+}
