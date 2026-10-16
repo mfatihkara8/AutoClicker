@@ -5,17 +5,23 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** M4/M5, ViewModel and hotkeys (wave 3 of the parallel plan)
+**Current milestone:** M5, UI and persistence (wave 4 of the parallel plan)
 
 ## Now
-Wave 3 (one worktree agent):
-- [ ] T-501 `MainViewModel`, failsafe wiring, T-402 F6 toggle, T-403 scoped ESC, T-303 Pick Location
+Wave 4 (parallel worktree agents):
+- [ ] T-502: cards and `MainView`
+- [ ] T-504: `MenuBarExtra`
 - [ ] Manual: SC-1 (banner hides within 2 s of the grant) and the T-002 follow-up (the grant survives a rebuild)
 
 ## Next
-- Wave 4: T-502 cards and `MainView`, T-504 `MenuBarExtra`
+- Manual pass with the user: SC-1 to SC-5, SC-7 to SC-10, the T-002 follow-up, and T-505
+- M6: Hardening and release (T-601 to T-604)
 
 ## Done
+- [x] T-303: Pick Location (3 s countdown, stores a CG-space fixed target); SC-7 still manual
+- [x] T-403: ESC registered only while clicking, unregistered on every stop path; SC-3 still manual
+- [x] T-402: F6 toggle (warning if F6 is taken); SC-2 still manual
+- [x] T-501: `MainViewModel` (15 Hz sampling while running, permission-loss stop, debounced auto-save) and composition root
 - [x] T-503: `SettingsStore` (versioned JSON envelope in `UserDefaults`)
 - [x] T-404: `FailsafeMonitor` (corner ≤ 2 px, own-window skip); end-to-end SC-9/SC-10 still manual
 - [x] T-302: `.currentCursor` and `.fixed` target resolution in `ClickEngine`

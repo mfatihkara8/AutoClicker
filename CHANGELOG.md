@@ -13,7 +13,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Click engine: deadline-based scheduling on a serial queue (no drift, jitter never accumulates, missed ticks are skipped rather than burst-fired), current-cursor and fixed targets, and stop conditions measured per run.
 - Failsafes: the run stops when the cursor reaches a screen corner (≤ 2 px); clicks targeting the app's own windows are skipped.
 - Settings persistence as versioned JSON in `UserDefaults`, falling back to defaults for missing, corrupt or unknown-version data.
-- Thread-safe click counter, multi-monitor coordinate conversion with screen-corner detection, and Carbon global hotkeys (not wired to the UI yet).
+- Working main window: Start/Stop, Active/Inactive status, total click counter with Reset, last stop reason, Pick Location with a 3 s countdown, and warnings for clicks inside the app's own window and for an unavailable F6.
+- Global hotkeys: F6 starts and stops clicking from any app; Esc stops clicking and is registered only while clicking is active.
+- Clicking stops automatically if Accessibility permission is revoked while running.
+- Settings are saved automatically (0.5 s after the last change, and on quit). The app keeps running when its window is closed.
+- Thread-safe click counter, multi-monitor coordinate conversion and screen-corner detection.
 - `.swift-format` configuration (4-space indent, 120 columns).
 - Xcode project: Swift 6, macOS 14+, App Sandbox off, Hardened Runtime on, Swift Testing unit tests and XCTest UI tests.
 - Project documentation:

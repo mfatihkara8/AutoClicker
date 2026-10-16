@@ -44,7 +44,8 @@ AutoClicker/                      Xcode project root
 │   ├── Features/
 │   │   ├── Main/
 │   │   │   ├── MainView.swift
-│   │   │   └── MainViewModel.swift     @Observable @MainActor
+│   │   │   ├── MainViewModel.swift     @Observable @MainActor
+│   │   │   └── StopReason+Display.swift localized stop-reason text (kept out of Core)
 │   │   ├── Components/                 PermissionBanner, StatusCard, ClickTypeCard,
 │   │   │                               IntervalCard, TargetCard, StopConditionCard
 │   │   └── MenuBar/
@@ -157,6 +158,8 @@ Each one leads to `engine.stop()`, then `onStop(reason)`, then the ViewModel on 
 3. It stores the result as `.fixed(point)`.
 
 ## Composition
+`AutoClickerApp` owns `MainViewModel` as `@State`, so clicking continues while the window is closed. It calls `activate()` (registers F6) and flushes pending settings on `willTerminateNotification`. When the process runs as the unit-test host (`XCTestConfigurationFilePath` is set), it skips `activate()` and uses a throwaway `UserDefaults` suite, so tests never register real hotkeys or touch the user's settings.
+
 `AutoClickerApp` builds the concrete dependencies and injects them into `MainViewModel` through its initializer:
 - `CGEventPoster`,
 - `CarbonHotkeyManager`,
