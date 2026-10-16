@@ -137,6 +137,33 @@ The format of each task is: **ID: Title**, then the files it touches, then **Don
 - **T-505: Verify click types manually**
   - **Done when:** SC-4 and SC-5 pass.
 
+## M7: Configurable hotkey and app assets
+
+M7 is done before M6 (see [ROADMAP.md](ROADMAP.md)).
+
+- **T-701: Persist the start/stop shortcut**
+  - **Files:** `Hotkey` (Codable, display name with modifier glyphs), `Services/SettingsStore.swift`
+  - **Done when:**
+    - The settings schema is version 2 and stores the shortcut alongside the click configuration.
+    - Version 1 data migrates with the shortcut defaulting to F6, and the migration is unit-tested.
+- **T-702: Add the shortcut recorder**
+  - **Files:** `Core/Hotkeys/ShortcutRecording.swift`, `Core/Hotkeys/LocalShortcutRecorder.swift`, a validation type, `MockShortcutRecorder`
+  - **Done when:**
+    - The validation rules from SPEC §3.3 are unit-tested (F-keys alone, ⌘/⌥/⌃ required otherwise, Shift-only and Esc rejected).
+    - The local monitor exists only while recording.
+- **T-703: Wire the configurable shortcut into the app**
+  - **Files:** `MainViewModel`, `HotkeyHint` (or a new card), `MenuBarPresentation`
+  - **Done when:**
+    - Change…, Reset and cancel work; a shortcut that cannot be registered keeps the previous one and shows a warning.
+    - The hint and the menu bar extra show the current shortcut.
+    - ViewModel tests with `MockHotkeyProvider` and `MockShortcutRecorder` pass.
+- **T-704: Add the app icon and accent color**
+  - **Files:** `AutoClicker/Assets.xcassets`, a generator script outside the app target
+  - **Done when:**
+    - `AppIcon` has every macOS size (16–1024 px at 1x/2x), drawn without SF Symbols (their license forbids use in app icons).
+    - `AccentColor` matches the icon.
+    - The icon shows in the Dock, Finder and the app switcher.
+
 ## M6: Hardening and release
 
 - **T-601: Profile with Instruments**

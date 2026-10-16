@@ -81,6 +81,13 @@ Implements the flow in section 2. It is `@Observable` and `@MainActor`.
 
 ### 3.3 Global hotkey (`HotkeyManager`)
 - Register a default **F6** start/stop hotkey with Carbon `RegisterEventHotKey`. It needs no permission and costs no CPU.
+- **Configurable start/stop hotkey** ([ADR-008](DECISIONS.md#adr-008-user-configurable-startstop-hotkey-recorded-with-a-scoped-local-key-monitor)):
+  - The hotkey card shows the current shortcut with **Change…** and **Reset** (back to F6) buttons.
+  - **Change…** enters recording mode ("Press a key combination… Esc to cancel"). The next key-down in the main window is captured with a local `NSEvent` monitor that exists only while recording.
+  - Accepted: F1–F20 alone, or any other key with at least one of ⌘, ⌥ or ⌃. Shift alone is rejected with a hint. Esc cancels recording and can never be chosen.
+  - If the new shortcut cannot be registered, the previous one stays active and a "This shortcut is in use" warning is shown.
+  - The shortcut is persisted with the other settings, and the hotkey hint and the menu bar extra show the current shortcut.
+  - The ESC emergency stop is not configurable.
 - The Carbon C callback cannot capture context, so pass context through its `userData` pointer.
 - Unregister with `UnregisterEventHotKey` on stop and in `deinit`.
 
@@ -127,7 +134,6 @@ Detailed conventions are in [RULES.md](RULES.md). The type layout is in [ARCHITE
 
 ## 5. Out of scope for Phase 1
 - Macro recording and playback.
-- A configurable hotkey recorder.
 - Profiles.
 - Multi-point or sequential clicking.
 - Mouse movement simulation.

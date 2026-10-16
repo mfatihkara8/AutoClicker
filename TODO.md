@@ -5,20 +5,20 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** M5 manual verification, then M6
+**Current milestone:** M7, Configurable hotkey and app assets (before M6)
 
 ## Now
-All Phase 1 code (M1–M5) is merged. What is left is a manual pass on real hardware:
-- [ ] SC-1 (banner hides within 2 s of the grant) and the T-002 follow-up (the grant survives a rebuild)
-- [ ] SC-2 (F6 in the background), SC-3 (Esc within 1 click)
-- [ ] T-505: SC-4 (double click in Finder/TextEdit), SC-5 (middle click opens a link in a new tab)
-- [ ] SC-7 (fixed target on a secondary monitor, if available), SC-8 (settings survive quit and relaunch)
-- [ ] SC-9 (corner stops the engine), SC-10 (own-window target skipped with a warning)
+Parallel worktree agents:
+- [ ] T-701 → T-702 → T-703: configurable start/stop shortcut
+- [ ] T-704: app icon and accent color
+- [ ] SC-7 (fixed target on a secondary monitor), only if a second display is available
 
 ## Next
 - M6: Hardening and release (T-601 to T-604)
 
 ## Done
+- [x] Manual pass on real hardware (2026-10-16): SC-1, SC-2, SC-3, SC-4, SC-5, SC-8, SC-9, SC-10 and the T-002 follow-up
+- [x] T-505: click types verified manually (SC-4, SC-5)
 - [x] T-504: `MenuBarExtra` (status, Start/Stop, Reset, Show Window, Quit); single `Window`; app stays alive when the window closes
 - [x] T-502: card-based `MainView` (status, click type, interval and jitter, target, stop condition, hotkey hint)
 - [x] T-303: Pick Location (3 s countdown, stores a CG-space fixed target); SC-7 still manual

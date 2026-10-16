@@ -64,7 +64,7 @@ xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'plat
 - **Sandbox and signing:**
   - App Sandbox stays **off**, because `CGEvent` posting needs it off.
   - Builds are signed with a fixed Development Team. Otherwise the Accessibility grant resets on every build. To reset it manually: `tccutil reset Accessibility <bundle-id>`.
-- **Hotkeys:** use Carbon `RegisterEventHotKey` only. Never use event taps or `NSEvent` global monitors, because they would require Input Monitoring permission.
+- **Hotkeys:** use Carbon `RegisterEventHotKey` only. Never use event taps or `NSEvent` global monitors, because they would require Input Monitoring permission. The one exception is the shortcut recorder: it may use an `NSEvent` *local* monitor, installed only while recording ([ADR-008](docs/DECISIONS.md)).
 - **Engine isolation:**
   - The engine (`Core/`) never imports SwiftUI.
   - System APIs are only reached through the `EventPosting`, `HotkeyProviding` and `PermissionChecking` adapters.

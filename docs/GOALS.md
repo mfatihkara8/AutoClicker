@@ -16,7 +16,6 @@
 
 ## Non-goals (Phase 1)
 - Macro recording and playback.
-- A configurable hotkey recorder.
 - Profiles.
 - Multi-point or sequential clicking.
 - Mouse movement simulation.

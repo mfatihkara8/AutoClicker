@@ -82,3 +82,21 @@ Never edit a past decision. To change one, add a new ADR that supersedes it and 
 - **Consequences:**
   - One storage key and one versioned schema.
   - Easy to unit test with a separate `UserDefaults` suite.
+
+## ADR-008: User-configurable start/stop hotkey, recorded with a scoped local key monitor
+**Status:** Accepted
+
+- **Context:**
+  - Users want to change the start/stop hotkey (F6 may clash with other apps or keyboards). This pulls the Phase 2 "hotkey recorder" forward into the 0.1.0 release.
+  - Carbon `RegisterEventHotKey` needs a virtual key code and Carbon modifier flags. SwiftUI `onKeyPress` only reports characters, which are layout-dependent and do not cover function keys reliably.
+  - ADR-002 rules out event taps and `NSEvent` *global* monitors because they need Input Monitoring permission. An `NSEvent` *local* monitor only sees events sent to this app's own windows and needs no permission.
+- **Decision:**
+  - Only the start/stop hotkey is configurable. The ESC emergency stop stays fixed.
+  - A recorder captures the next key-down with `NSEvent.addLocalMonitorForEvents(matching: .keyDown)`. The monitor is installed only while the recorder is active in the main window and removed as soon as a key is captured or recording is cancelled. It lives behind a protocol so the ViewModel stays testable.
+  - Accepted shortcuts: F1–F20 alone, or any other key combined with at least one of ⌘, ⌥ or ⌃. Shift alone is not enough, and Esc is reserved for the emergency stop and cancels recording.
+  - If the new shortcut cannot be registered (for example, another app owns it), the previous shortcut stays active and a warning is shown.
+  - The shortcut is persisted with the rest of the settings (one key, versioned schema, as in ADR-007), so the schema moves to version 2 with a migration from version 1 that defaults to F6.
+- **Consequences:**
+  - Still no Input Monitoring permission, and no key monitoring outside of an explicit recording session.
+  - Global monitors and event taps remain forbidden.
+

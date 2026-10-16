@@ -65,8 +65,19 @@ The individual tasks are listed in [TASKS.md](TASKS.md). Current progress is tra
   - A Release build and notarization notes in the README.
 - **Done when:** SC-1 to SC-11 all pass, and `CHANGELOG.md` has a `0.1.0` entry.
 
+### M7: Configurable hotkey and app assets
+M7 was added after M5 and is done **before** M6, so that 0.1.0 ships with it.
+- **Goal:** the user can choose the start/stop shortcut, and the app has its own icon.
+- **Deliverables:**
+  - `ShortcutRecording` and its local-monitor implementation ([ADR-008](DECISIONS.md#adr-008-user-configurable-startstop-hotkey-recorded-with-a-scoped-local-key-monitor)).
+  - Settings schema version 2 with the start/stop shortcut, plus migration from version 1.
+  - The recorder UI in the hotkey card, and the current shortcut shown in the menu bar extra.
+  - A generated app icon in every macOS size and a matching accent color.
+- **Done when:**
+  - A changed shortcut works globally, survives a relaunch, and a taken shortcut keeps the old one with a warning.
+  - The app shows its own icon in the Dock, Finder and the app switcher.
+
 ## Phase 2: Productivity (planned)
-- A configurable hotkey recorder for start/stop.
 - Profiles: saved and named configurations.
 - Multi-point and sequential clicking with a per-point delay.
 - A random position offset within a radius.
