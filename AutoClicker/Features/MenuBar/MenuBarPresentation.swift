@@ -12,8 +12,9 @@ struct MenuBarPresentation: Equatable {
     let isRunning: Bool
     let totalClicks: Int
     let lastStopReason: StopReason?
-    /// Whether F6 is registered. When it is not, the menu must not advertise it.
-    let isHotkeyAvailable: Bool
+    /// The display name of the start/stop shortcut, such as "F6" or "⌃⌥K", or `nil` when it is not registered and the
+    /// menu must not advertise it.
+    let toggleHotkeyName: String?
     /// The locale used to format the click count; injected so tests do not depend on the machine's settings.
     var locale: Locale = .current
 
@@ -39,20 +40,28 @@ struct MenuBarPresentation: Equatable {
             comment: "Menu bar status while not clicking; the argument explains why the last run ended.")
     }
 
-    /// The title of the Start/Stop item, with the F6 hint when the hotkey works.
+    /// The title of the Start/Stop item, with the current shortcut as a hint when it works.
     ///
-    /// The hint is part of the title rather than a key equivalent: a menu key equivalent for F6 could fire alongside
-    /// the global Carbon hotkey while the menu is open and toggle the run twice.
+    /// The hint is part of the title rather than a key equivalent: a menu key equivalent for the shortcut could fire
+    /// alongside the global Carbon hotkey while the menu is open and toggle the run twice.
     var startStopTitle: String {
-        switch (isRunning, isHotkeyAvailable) {
-        case (true, true):
-            String(localized: "Stop Clicking (F6)", comment: "Menu bar item that stops clicking; F6 is the hotkey.")
-        case (true, false):
-            String(localized: "Stop Clicking", comment: "Menu bar item that stops clicking, when F6 is unavailable.")
-        case (false, true):
-            String(localized: "Start Clicking (F6)", comment: "Menu bar item that starts clicking; F6 is the hotkey.")
-        case (false, false):
-            String(localized: "Start Clicking", comment: "Menu bar item that starts clicking, when F6 is unavailable.")
+        switch (isRunning, toggleHotkeyName) {
+        case (true, let shortcut?):
+            String(
+                localized: "Stop Clicking (\(shortcut))",
+                comment: "Menu bar item that stops clicking; the argument is the start/stop shortcut, such as F6.")
+        case (true, nil):
+            String(
+                localized: "Stop Clicking",
+                comment: "Menu bar item that stops clicking, when the start/stop shortcut is unavailable.")
+        case (false, let shortcut?):
+            String(
+                localized: "Start Clicking (\(shortcut))",
+                comment: "Menu bar item that starts clicking; the argument is the start/stop shortcut, such as F6.")
+        case (false, nil):
+            String(
+                localized: "Start Clicking",
+                comment: "Menu bar item that starts clicking, when the start/stop shortcut is unavailable.")
         }
     }
 

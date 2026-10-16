@@ -34,6 +34,8 @@ struct AutoClickerApp: App {
             counter: counter,
             failsafe: failsafe,
             hotkeys: CarbonHotkeyManager(),
+            // Installs no monitor until the user clicks Change…, so it is safe in the test host too.
+            shortcutRecorder: LocalShortcutRecorder(),
             permissionManager: permissionManager,
             settingsStore: SettingsStore(defaults: Self.makeDefaults(isTestHost: isTestHost))
         )

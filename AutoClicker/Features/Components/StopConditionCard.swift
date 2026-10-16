@@ -18,7 +18,7 @@ struct StopConditionCard: View {
 
                 switch editor.wrappedValue.kind {
                 case .never:
-                    caption("Runs until you stop it with Stop, F6 or Esc.")
+                    caption("Runs until you stop it with Stop, the start/stop shortcut or Esc.")
                 case .afterClicks:
                     HStack(spacing: 6) {
                         Text("Stop after")

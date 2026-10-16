@@ -17,7 +17,7 @@ struct MenuBarContent: View {
             isRunning: viewModel.isRunning,
             totalClicks: viewModel.totalClicks,
             lastStopReason: viewModel.lastStopReason,
-            isHotkeyAvailable: viewModel.hotkeyWarning == nil
+            toggleHotkeyName: viewModel.advertisedToggleHotkeyName
         )
 
         // A plain `Text` becomes a disabled, informational menu item.

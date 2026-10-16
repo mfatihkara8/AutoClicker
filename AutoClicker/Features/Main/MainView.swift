@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// The main window: the permission banner and the run status on top, the settings cards and hotkey hint below.
@@ -21,6 +22,7 @@ struct MainView: View {
                 StatusCard(
                     isRunning: viewModel.isRunning,
                     canStart: viewModel.canStart,
+                    toggleHotkeyName: viewModel.advertisedToggleHotkeyName,
                     totalClicks: viewModel.totalClicks,
                     lastStopReason: viewModel.isRunning ? nil : viewModel.lastStopReason?.displayText,
                     onStart: viewModel.start,
@@ -39,6 +41,7 @@ struct MainView: View {
                         .disabled(viewModel.isRunning)
 
                     HotkeyHint(
+                        toggleHotkeyName: viewModel.toggleHotkey.displayName,
                         hotkeyWarning: viewModel.hotkeyWarning,
                         emergencyStopWarning: viewModel.emergencyStopWarning
                     )
@@ -51,7 +54,16 @@ struct MainView: View {
         .animation(.default, value: viewModel.isAccessibilityTrusted)
         // Poll only while the window is on screen (SPEC section 2).
         .onAppear { viewModel.startPermissionMonitoring() }
-        .onDisappear { viewModel.stopPermissionMonitoring() }
+        .onDisappear {
+            viewModel.stopPermissionMonitoring()
+            // The recorder only sees this window's keys, so a session must not outlive it.
+            viewModel.cancelRecordingShortcut()
+        }
+        // No key reaches the recorder while another app is active, and recording keeps the shortcut unregistered, so
+        // leaving the app mid-recording would otherwise leave the user without a working shortcut.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            viewModel.cancelRecordingShortcut()
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background {
                 viewModel.stopPermissionMonitoring()
@@ -73,6 +85,15 @@ struct MainView: View {
                 onCancelPickLocation: viewModel.cancelPickLocation
             )
             StopConditionCard(stopCondition: $viewModel.configuration.stopCondition)
+            ShortcutCard(
+                shortcutName: viewModel.toggleHotkey.displayName,
+                isRecording: viewModel.isRecordingShortcut,
+                isDefault: viewModel.isDefaultShortcut,
+                warning: viewModel.shortcutWarning,
+                onChange: viewModel.beginRecordingShortcut,
+                onCancel: viewModel.cancelRecordingShortcut,
+                onReset: viewModel.resetShortcut
+            )
         }
     }
 }

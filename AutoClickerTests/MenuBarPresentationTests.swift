@@ -10,13 +10,13 @@ struct MenuBarPresentationTests {
         isRunning: Bool,
         totalClicks: Int = 0,
         lastStopReason: StopReason? = nil,
-        isHotkeyAvailable: Bool = true
+        toggleHotkeyName: String? = "F6"
     ) -> MenuBarPresentation {
         MenuBarPresentation(
             isRunning: isRunning,
             totalClicks: totalClicks,
             lastStopReason: lastStopReason,
-            isHotkeyAvailable: isHotkeyAvailable,
+            toggleHotkeyName: toggleHotkeyName,
             locale: Self.locale
         )
     }
@@ -57,9 +57,19 @@ struct MenuBarPresentationTests {
         #expect(presentation(isRunning: true).startStopTitle == "Stop Clicking (F6)")
     }
 
-    @Test func startStopTitleOmitsTheF6HintWhenTheHotkeyIsUnavailable() {
-        #expect(presentation(isRunning: false, isHotkeyAvailable: false).startStopTitle == "Start Clicking")
-        #expect(presentation(isRunning: true, isHotkeyAvailable: false).startStopTitle == "Stop Clicking")
+    @Test func startStopTitleShowsACustomShortcut() {
+        let shortcut = Hotkey(keyCode: 0x28, modifiers: Hotkey.Modifier.control | Hotkey.Modifier.option, keyLabel: "K")
+        #expect(
+            presentation(isRunning: false, toggleHotkeyName: shortcut.displayName).startStopTitle
+                == "Start Clicking (⌃⌥K)")
+        #expect(
+            presentation(isRunning: true, toggleHotkeyName: shortcut.displayName).startStopTitle
+                == "Stop Clicking (⌃⌥K)")
+    }
+
+    @Test func startStopTitleOmitsTheHintWhenTheShortcutIsUnavailable() {
+        #expect(presentation(isRunning: false, toggleHotkeyName: nil).startStopTitle == "Start Clicking")
+        #expect(presentation(isRunning: true, toggleHotkeyName: nil).startStopTitle == "Stop Clicking")
     }
 
     // MARK: - Icon
