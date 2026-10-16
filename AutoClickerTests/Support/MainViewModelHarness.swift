@@ -25,6 +25,7 @@ final class MainViewModelHarness {
         var pickCursor: CGPoint? = CGPoint(x: 321, y: 654)
         var windowFrames: [CGRect] = []
         var geometryReads = 0
+        var openedURLs: [URL] = []
     }
 
     let suiteName = "MainViewModelTests.\(UUID().uuidString)"
@@ -39,7 +40,7 @@ final class MainViewModelHarness {
     let hotkeys = MockHotkeyProvider()
     let checker: MockPermissionChecker
     let permissionManager: PermissionManager
-    let environment = Environment()
+    let environment: Environment
     let saveDebounce: Duration
     let countdownTick: Duration
 
@@ -56,7 +57,10 @@ final class MainViewModelHarness {
         self.defaults = defaults
         store = SettingsStore(defaults: defaults)
         checker = MockPermissionChecker(isTrusted: isTrusted)
-        permissionManager = PermissionManager(checker: checker, pollInterval: .milliseconds(5), openURL: { _ in })
+        let environment = Environment()
+        self.environment = environment
+        permissionManager = PermissionManager(
+            checker: checker, pollInterval: .milliseconds(5), openURL: { environment.openedURLs.append($0) })
         let cursor = engineCursor
         engine = ClickEngine(
             poster: poster,

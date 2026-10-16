@@ -68,6 +68,33 @@ struct MainViewModelTests {
         #expect(viewModel.isSampling == false)
     }
 
+    @Test func startOrOpenSettingsPicksUpAGrantMadeWhileTheWindowWasClosed() throws {
+        let harness = try Harness(isTrusted: false)
+        let viewModel = harness.viewModel
+        viewModel.configuration = Harness.configuration()
+        #expect(viewModel.isAccessibilityTrusted == false)
+
+        // Granted in System Settings while nothing was polling.
+        harness.checker.isTrusted = true
+        viewModel.startOrOpenAccessibilitySettings()
+
+        #expect(viewModel.isRunning)
+        #expect(harness.environment.openedURLs.isEmpty)
+        viewModel.stop()
+    }
+
+    @Test func startOrOpenSettingsOpensThePaneWhenPermissionIsMissing() throws {
+        let harness = try Harness(isTrusted: false)
+        let viewModel = harness.viewModel
+        viewModel.configuration = Harness.configuration()
+
+        viewModel.startOrOpenAccessibilitySettings()
+
+        #expect(viewModel.isRunning == false)
+        #expect(harness.engine.isRunning == false)
+        #expect(harness.environment.openedURLs == [PermissionManager.accessibilitySettingsURL].compactMap { $0 })
+    }
+
     @Test func startRegistersEscapeAndRunsTheEngine() async throws {
         let harness = try Harness()
         let viewModel = harness.viewModel

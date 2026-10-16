@@ -308,6 +308,18 @@ final class MainViewModel {
         permissionManager.openAccessibilitySettings()
     }
 
+    /// Starts a run, or opens the Accessibility pane when permission is still missing.
+    ///
+    /// The menu bar uses this instead of a disabled Start item: permission is polled only while the main window is
+    /// visible, so with the window closed the cached state can be stale. `start()` re-reads it, and only when trust is
+    /// really missing does the user get sent to System Settings.
+    func startOrOpenAccessibilitySettings() {
+        start()
+        if !isRunning && !isAccessibilityTrusted {
+            openAccessibilitySettings()
+        }
+    }
+
     // MARK: - Private: running
 
     private func requestStop(_ reason: StopReason) {

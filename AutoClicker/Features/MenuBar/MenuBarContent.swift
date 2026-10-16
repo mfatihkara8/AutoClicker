@@ -28,8 +28,9 @@ struct MenuBarContent: View {
         if viewModel.isRunning {
             Button(presentation.startStopTitle, action: viewModel.stop)
         } else {
-            Button(presentation.startStopTitle, action: viewModel.start)
-                .disabled(!viewModel.canStart)
+            // Not disabled without permission: the cached trust can be stale while the window is closed, so the action
+            // re-checks it and opens System Settings only if it is really missing.
+            Button(presentation.startStopTitle, action: viewModel.startOrOpenAccessibilitySettings)
         }
 
         if !viewModel.isAccessibilityTrusted {
