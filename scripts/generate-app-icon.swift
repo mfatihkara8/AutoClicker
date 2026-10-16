@@ -1,16 +1,22 @@
-// Generates the AutoClicker app icon and writes it into the asset catalog.
+// Generates the AutoClicker app icon as an Icon Composer document.
 //
 // Run from the repository root:
 //
 //     swift scripts/generate-app-icon.swift
 //
-// It renders every macOS AppIcon size (16-512 pt at 1x and 2x) into
-// `AutoClicker/Assets.xcassets/AppIcon.appiconset`, rewrites its `Contents.json`, and writes a
-// contact sheet to `build/icon-preview.png` (git-ignored) for judging the result by eye.
+// It writes `AutoClicker/AppIcon.icon` (an `icon.json` plus one SVG per foreground layer) and,
+// when Xcode's `ictool` is available, renders the light, dark and tinted appearances into a
+// contact sheet at `build/icon-preview.png` (git-ignored) for judging the result by eye.
 // Running it again overwrites the same files with the same output.
 //
-// Everything is drawn with Core Graphics paths. SF Symbols, system symbol images and emoji are
-// deliberately not used: Apple's SF Symbols license forbids using them in app icons.
+// The document holds only flat, white foreground shapes and the background fill. The system adds
+// the squircle mask, Liquid Glass, specular highlights and shadows, and derives the tinted
+// appearance. When the app is built, actool compiles the document into `Assets.car`, including
+// flattened fallbacks for macOS 14 and 15.
+//
+// Every shape is drawn with Core Graphics paths and exported as SVG path data. SF Symbols, system
+// symbol images and emoji are deliberately not used: Apple's SF Symbols license forbids using
+// them in app icons.
 //
 // This file lives outside `AutoClicker/` because every file in the app folders is copied into
 // the app bundle.
@@ -23,15 +29,12 @@ import UniformTypeIdentifiers
 
 // MARK: - Geometry
 
-/// The design canvas. All coordinates below are in this space, with a top-left origin.
+/// The icon canvas, in points with a top-left origin. In Icon Composer the canvas is the whole
+/// tile; the system applies the squircle mask and the margins of each platform's grid.
 let canvasSize: CGFloat = 1024
 
-/// The macOS icon grid: an 824 pt tile centered on the 1024 pt canvas.
-let tileRect = CGRect(x: 100, y: 100, width: 824, height: 824)
-let tileCornerRadius: CGFloat = 185
-
 /// The pointer: a tailless arrowhead with a notched base, in pointer units. The tip is at the
-/// origin and the pointer's axis runs along +x; one unit is `RenderStyle.pointerLength`.
+/// origin and the pointer's axis runs along +x; one unit is `pointerLength`.
 /// Each corner has its own rounding radius, also in pointer units.
 let pointerCorners: [(point: CGPoint, radius: CGFloat)] = [
     (CGPoint(x: 0, y: 0), 0.07),  // tip
@@ -44,137 +47,44 @@ let pointerCorners: [(point: CGPoint, radius: CGFloat)] = [
 /// vertical (negative turns it counterclockwise on screen).
 let pointerTiltDegrees: CGFloat = -13
 
-/// Settings that change with the output size so the small renders stay legible.
-///
-/// The small sizes use a larger pointer, fewer and thicker rings, and tighter shadows, because a
-/// pixel there covers 32-64 canvas points.
-struct RenderStyle {
-    /// Length of the pointer from tip to wing tips, in canvas points.
-    var pointerLength: CGFloat
-    /// Radius of the soft "press" dot under the tip, in canvas points.
-    var pressDotRadius: CGFloat
-    /// Opacity of the press dot at its center.
-    var pressDotAlpha: CGFloat
-    /// Radii of the click rings, in canvas points.
-    var ringRadii: [CGFloat]
-    /// Opacity of each ring.
-    var ringAlphas: [CGFloat]
-    /// Stroke width of each ring, in canvas points.
-    var ringWidths: [CGFloat]
-    /// Downward offset of the pointer shadow, in canvas points.
-    var shadowOffset: CGFloat
-    /// Blur of the pointer shadow, in canvas points.
-    var shadowBlur: CGFloat
-    /// Opacity of the pointer shadow.
-    var shadowAlpha: CGFloat
-    /// Whether to draw the soft highlights and shading that only read at large sizes.
-    var detailed: Bool
+/// Length of the pointer from tip to wing tips, in canvas points.
+let pointerLength: CGFloat = 520
 
-    init(pixelSize: Int) {
-        switch pixelSize {
-        case ...16:
-            pointerLength = 500
-            pressDotRadius = 0
-            pressDotAlpha = 0
-            ringRadii = [190]
-            ringAlphas = [0.5]
-            ringWidths = [64]
-            shadowOffset = 24
-            shadowBlur = 24
-            shadowAlpha = 0.45
-            detailed = false
-        case ...32:
-            pointerLength = 490
-            pressDotRadius = 110
-            pressDotAlpha = 0.3
-            ringRadii = [195]
-            ringAlphas = [0.6]
-            ringWidths = [44]
-            shadowOffset = 20
-            shadowBlur = 28
-            shadowAlpha = 0.4
-            detailed = false
-        case ...64:
-            pointerLength = 475
-            pressDotRadius = 100
-            pressDotAlpha = 0.34
-            ringRadii = [170, 250]
-            ringAlphas = [0.62, 0.3]
-            ringWidths = [30, 24]
-            shadowOffset = 20
-            shadowBlur = 40
-            shadowAlpha = 0.38
-            detailed = true
-        default:
-            pointerLength = 470
-            pressDotRadius = 96
-            pressDotAlpha = 0.34
-            ringRadii = [165, 245]
-            ringAlphas = [0.6, 0.28]
-            ringWidths = [22, 16]
-            shadowOffset = 22
-            shadowBlur = 48
-            shadowAlpha = 0.36
-            detailed = true
-        }
-    }
-}
+/// Radius of the "press" dot under the tip, in canvas points.
+let pressDotRadius: CGFloat = 100
+
+/// The click rings around the tip: radius and stroke width, in canvas points. An Icon Composer
+/// document has no per-size artwork, so the strokes are bold enough to survive at 16 px.
+let ringSpecs: [(radius: CGFloat, width: CGFloat)] = [
+    (182, 36),
+    (270, 28),
+]
 
 // MARK: - Colors
 
-func srgb(_ hex: UInt32, alpha: CGFloat = 1) -> CGColor {
-    let red = CGFloat((hex >> 16) & 0xFF) / 255
-    let green = CGFloat((hex >> 8) & 0xFF) / 255
-    let blue = CGFloat(hex & 0xFF) / 255
-    return CGColor(srgbRed: red, green: green, blue: blue, alpha: alpha)
+/// An Icon Composer color string.
+func iconColor(_ hex: UInt32, alpha: CGFloat = 1) -> String {
+    let components = [(hex >> 16) & 0xFF, (hex >> 8) & 0xFF, hex & 0xFF].map { CGFloat($0) / 255 }
+    return "srgb:" + (components + [alpha]).map { String(format: "%.5f", $0) }.joined(separator: ",")
 }
 
-let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
-let gradientTop = srgb(0x4F8B_FF)
-let gradientBottom = srgb(0x1F4F_D8)
-let shadowColor = srgb(0x0A20_6E)
-
-// MARK: - Paths
-
-/// A rounded rectangle with Apple-style continuous ("squircle") corners.
-///
-/// The control points are the widely used approximation of the curve behind
-/// `UIBezierPath(roundedRect:cornerRadius:)` since iOS 7; each corner spans 1.528665 radii.
-func continuousRoundedRect(_ rect: CGRect, radius: CGFloat) -> CGPath {
-    let radius = min(radius, min(rect.width, rect.height) / 2 / 1.528_665)
-    let path = CGMutablePath()
-    // Each corner: its point, the unit vector back along the incoming edge, and the unit vector along
-    // the outgoing edge. The path runs clockwise on screen.
-    let corners: [(CGPoint, CGVector, CGVector)] = [
-        (CGPoint(x: rect.maxX, y: rect.minY), CGVector(dx: -1, dy: 0), CGVector(dx: 0, dy: 1)),
-        (CGPoint(x: rect.maxX, y: rect.maxY), CGVector(dx: 0, dy: -1), CGVector(dx: -1, dy: 0)),
-        (CGPoint(x: rect.minX, y: rect.maxY), CGVector(dx: 1, dy: 0), CGVector(dx: 0, dy: -1)),
-        (CGPoint(x: rect.minX, y: rect.minY), CGVector(dx: 0, dy: 1), CGVector(dx: 1, dy: 0)),
-    ]
-    for (index, (corner, incoming, outgoing)) in corners.enumerated() {
-        func point(_ along: CGFloat, _ across: CGFloat) -> CGPoint {
-            CGPoint(
-                x: corner.x + radius * (along * incoming.dx + across * outgoing.dx),
-                y: corner.y + radius * (along * incoming.dy + across * outgoing.dy)
-            )
-        }
-        if index == 0 {
-            path.move(to: point(1.528_665, 0))
-        } else {
-            path.addLine(to: point(1.528_665, 0))
-        }
-        path.addCurve(to: point(0.669_934, 0.065_496), control1: point(1.088_493, 0), control2: point(0.868_407, 0))
-        path.addLine(to: point(0.631_494, 0.074_911))
-        path.addCurve(
-            to: point(0.074_912, 0.631_494),
-            control1: point(0.372_824, 0.169_059),
-            control2: point(0.169_060, 0.372_824)
-        )
-        path.addCurve(to: point(0, 1.528_665), control1: point(0, 0.868_407), control2: point(0, 1.088_493))
-    }
-    path.closeSubpath()
-    return path
+func srgb(_ hex: UInt32) -> CGColor {
+    CGColor(
+        srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
+        green: CGFloat((hex >> 8) & 0xFF) / 255,
+        blue: CGFloat(hex & 0xFF) / 255,
+        alpha: 1
+    )
 }
+
+/// Background gradients, top to bottom.
+let lightBackground: [UInt32] = [0x4F8B_FF, 0x1F4F_D8]
+let darkBackground: [UInt32] = [0x1E25_33, 0x0D10_18]
+
+/// In dark mode the rings and the press dot take the accent blue so they glow on the graphite tile.
+let darkAccent: UInt32 = 0x4C84_FF
+
+// MARK: - Shapes
 
 /// A closed polygon whose corners are rounded with circular arcs of the given radii.
 func roundedPolygon(_ corners: [(point: CGPoint, radius: CGFloat)], transform: CGAffineTransform) -> CGPath {
@@ -190,202 +100,232 @@ func roundedPolygon(_ corners: [(point: CGPoint, radius: CGFloat)], transform: C
     return path
 }
 
-/// The foreground: the pointer, the press dot and the click rings, laid out for one render size.
+/// The foreground shapes, laid out on the canvas. The pointer's tip sits at the center of the
+/// press dot and rings, and the whole group is centered on the canvas.
 struct Glyph {
     var pointer: CGPath
-    /// The point the pointer's tip touches; the dot and rings are centered on it.
-    var tip: CGPoint
+    var pressDot: CGPath
+    /// Each ring as a filled outline, innermost first.
+    var rings: [CGPath]
 
-    /// Builds the pointer around its tip, then moves the whole group so its visual bounds (ring
-    /// strokes included) are centered on the tile.
-    init(style: RenderStyle) {
+    init() {
         // Upright pose: the edge from the tip to the first wing points straight down.
         let wing = pointerCorners[1].point
         let upright = CGFloat.pi / 2 - atan2(wing.y, wing.x)
         let angle = upright + pointerTiltDegrees * .pi / 180
-        let transform = CGAffineTransform(rotationAngle: angle).scaledBy(x: style.pointerLength, y: style.pointerLength)
+        let transform = CGAffineTransform(rotationAngle: angle).scaledBy(x: pointerLength, y: pointerLength)
         let pointer = roundedPolygon(pointerCorners, transform: transform)
 
-        var bounds = pointer.boundingBoxOfPath
-        let reach = max(style.pressDotRadius, (style.ringRadii.last ?? 0) + (style.ringWidths.last ?? 0) / 2)
-        bounds = bounds.union(CGRect(x: -reach, y: -reach, width: reach * 2, height: reach * 2))
-        var shift = CGAffineTransform(translationX: tileRect.midX - bounds.midX, y: tileRect.midY - bounds.midY)
+        let outer = ringSpecs.map { $0.radius + $0.width / 2 }.max() ?? 0
+        let reach = max(pressDotRadius, outer)
+        let bounds = pointer.boundingBoxOfPath.union(CGRect(x: -reach, y: -reach, width: reach * 2, height: reach * 2))
+        var shift = CGAffineTransform(translationX: canvasSize / 2 - bounds.midX, y: canvasSize / 2 - bounds.midY)
+        let tip = CGPoint.zero.applying(shift)
+
+        func circle(radius: CGFloat) -> CGPath {
+            CGPath(
+                ellipseIn: CGRect(x: tip.x - radius, y: tip.y - radius, width: radius * 2, height: radius * 2),
+                transform: nil)
+        }
         self.pointer = pointer.copy(using: &shift)!
-        self.tip = CGPoint.zero.applying(shift)
+        self.pressDot = circle(radius: pressDotRadius)
+        self.rings = ringSpecs.map { ring in
+            circle(radius: ring.radius).copy(
+                strokingWithWidth: ring.width, lineCap: .butt, lineJoin: .miter, miterLimit: 10)
+        }
     }
 }
 
-// MARK: - Drawing
+// MARK: - SVG
 
-/// Draws the icon into `context`, whose user space must already map the 1024 pt canvas
-/// (top-left origin) onto the output. `pixelScale` is output pixels per canvas point.
-func drawIcon(in context: CGContext, pixelScale: CGFloat, style: RenderStyle) {
-    let tile = continuousRoundedRect(tileRect, radius: tileCornerRadius)
-
-    // Drop shadow under the tile. Shadow offsets are in device space, where y grows upward.
-    context.saveGState()
-    context.setShadow(
-        offset: CGSize(width: 0, height: -10 * pixelScale),
-        blur: 20 * pixelScale,
-        color: srgb(0x000000, alpha: style.detailed ? 0.32 : 0.2)
-    )
-    context.addPath(tile)
-    context.setFillColor(gradientBottom)
-    context.fillPath()
-    context.restoreGState()
-
-    // Tile background: vertical blue gradient.
-    context.saveGState()
-    context.addPath(tile)
-    context.clip()
-    let background = CGGradient(
-        colorsSpace: colorSpace,
-        colors: [gradientTop, gradientBottom] as CFArray,
-        locations: [0, 1]
-    )!
-    context.drawLinearGradient(
-        background,
-        start: CGPoint(x: 0, y: tileRect.minY),
-        end: CGPoint(x: 0, y: tileRect.maxY),
-        options: []
-    )
-
-    // Soft highlight across the top of the tile.
-    let highlight = CGGradient(
-        colorsSpace: colorSpace,
-        colors: [srgb(0xFFFFFF, alpha: 0.28), srgb(0xFFFFFF, alpha: 0)] as CFArray,
-        locations: [0, 1]
-    )!
-    context.saveGState()
-    context.translateBy(x: canvasSize / 2, y: tileRect.minY)
-    context.scaleBy(x: 1.6, y: 1)
-    context.drawRadialGradient(
-        highlight,
-        startCenter: .zero,
-        startRadius: 0,
-        endCenter: .zero,
-        endRadius: 470,
-        options: []
-    )
-    context.restoreGState()
-
-    if style.detailed {
-        // A faint darker band at the bottom edge for depth.
-        let shade = CGGradient(
-            colorsSpace: colorSpace,
-            colors: [srgb(0x0A1E66, alpha: 0), srgb(0x0A1E66, alpha: 0.22)] as CFArray,
-            locations: [0, 1]
-        )!
-        context.drawLinearGradient(
-            shade,
-            start: CGPoint(x: 0, y: tileRect.maxY - 220),
-            end: CGPoint(x: 0, y: tileRect.maxY),
-            options: []
-        )
+/// SVG path data for `path`, with coordinates rounded to 1/100 pt.
+func svgPathData(_ path: CGPath) -> String {
+    var commands: [String] = []
+    func format(_ points: UnsafeMutablePointer<CGPoint>, _ count: Int) -> String {
+        (0..<count).map { String(format: "%.2f %.2f", points[$0].x, points[$0].y) }.joined(separator: " ")
     }
-    context.restoreGState()
+    path.applyWithBlock { element in
+        let points = element.pointee.points
+        switch element.pointee.type {
+        case .moveToPoint:
+            commands.append("M" + format(points, 1))
+        case .addLineToPoint:
+            commands.append("L" + format(points, 1))
+        case .addQuadCurveToPoint:
+            commands.append("Q" + format(points, 2))
+        case .addCurveToPoint:
+            commands.append("C" + format(points, 3))
+        case .closeSubpath:
+            commands.append("Z")
+        @unknown default:
+            fatalError("Unknown path element")
+        }
+    }
+    return commands.joined(separator: " ")
+}
 
-    let glyph = Glyph(style: style)
-    drawRipples(around: glyph.tip, in: context, style: style)
-    drawPointer(glyph.pointer, in: context, pixelScale: pixelScale, style: style)
+/// A 1024 x 1024 SVG with one white shape on a transparent background.
+func svgDocument(_ path: CGPath) -> String {
+    let size = Int(canvasSize)
+    return """
+        <svg xmlns="http://www.w3.org/2000/svg" width="\(size)" height="\(size)" viewBox="0 0 \(size) \(size)">
+          <path fill="#FFFFFF" fill-rule="nonzero" d="\(svgPathData(path))"/>
+        </svg>
 
-    if style.detailed {
-        // Thin inner stroke that catches the light along the tile's edge.
-        context.saveGState()
-        context.addPath(tile)
-        context.clip()
-        context.addPath(tile)
-        context.setLineWidth(6)
-        context.setStrokeColor(srgb(0xFFFFFF, alpha: 0.14))
-        context.strokePath()
-        context.restoreGState()
+        """
+}
+
+// MARK: - Icon document
+
+/// A layer of the icon: its SVG file name, its opacity in light mode, and its dark-mode
+/// color and opacity (nil keeps the light-mode white).
+struct Layer {
+    var name: String
+    var path: CGPath
+    var opacity: CGFloat
+    var darkColor: UInt32?
+    var darkOpacity: CGFloat
+
+    var fileName: String { "\(name).svg" }
+
+    var json: [String: Any] {
+        var json: [String: Any] = [
+            "image-name": fileName,
+            "name": name,
+            "glass": true,
+        ]
+        if opacity < 1 || darkOpacity < 1 {
+            json["opacity-specializations"] = [
+                ["value": opacity],
+                ["appearance": "dark", "value": darkOpacity],
+            ]
+        }
+        if let darkColor {
+            json["fill-specializations"] = [
+                ["appearance": "dark", "value": ["solid": iconColor(darkColor)]]
+            ]
+        }
+        return json
     }
 }
 
-/// A soft press dot and full concentric rings centered on the pointer's tip, partly behind it.
-func drawRipples(around tip: CGPoint, in context: CGContext, style: RenderStyle) {
-    if style.pressDotRadius > 0 {
-        let dot = CGGradient(
-            colorsSpace: colorSpace,
-            colors: [
-                srgb(0xFFFFFF, alpha: style.pressDotAlpha),
-                srgb(0xFFFFFF, alpha: style.pressDotAlpha * 0.7),
-                srgb(0xFFFFFF, alpha: 0),
-            ] as CFArray,
-            locations: [0, 0.75, 1]
-        )!
-        context.drawRadialGradient(
-            dot,
-            startCenter: tip,
-            startRadius: 0,
-            endCenter: tip,
-            endRadius: style.pressDotRadius,
-            options: []
-        )
-    }
-    context.saveGState()
-    for (index, radius) in style.ringRadii.enumerated() {
-        context.addEllipse(in: CGRect(x: tip.x - radius, y: tip.y - radius, width: radius * 2, height: radius * 2))
-        context.setLineWidth(style.ringWidths[index])
-        context.setStrokeColor(srgb(0xFFFFFF, alpha: style.ringAlphas[index]))
-        context.strokePath()
-    }
-    context.restoreGState()
+func linearGradient(_ colors: [UInt32]) -> [String: Any] {
+    [
+        "linear-gradient": colors.map { iconColor($0) },
+        "orientation": [
+            "start": ["x": 0.5, "y": 0],
+            "stop": ["x": 0.5, "y": 1],
+        ],
+    ]
 }
 
-/// The white pointer with a soft, blue-tinted drop shadow.
-func drawPointer(_ pointer: CGPath, in context: CGContext, pixelScale: CGFloat, style: RenderStyle) {
-    // Shadow pass. Shadow offsets are in device space, where y grows upward.
-    context.saveGState()
-    context.setShadow(
-        offset: CGSize(width: 0, height: -style.shadowOffset * pixelScale),
-        blur: style.shadowBlur * pixelScale,
-        color: shadowColor.copy(alpha: style.shadowAlpha)!
-    )
-    context.addPath(pointer)
-    context.setFillColor(srgb(0xFFFFFF))
-    context.fillPath()
-    context.restoreGState()
-
-    // Body: clean white with a very subtle top-to-bottom gradient.
-    context.saveGState()
-    context.addPath(pointer)
-    context.clip()
-    let body = CGGradient(
-        colorsSpace: colorSpace,
-        colors: [srgb(0xFFFFFF), srgb(style.detailed ? 0xE8EE_FA : 0xF4F7_FD)] as CFArray,
-        locations: [0, 1]
-    )!
-    let bounds = pointer.boundingBox
-    context.drawLinearGradient(
-        body,
-        start: CGPoint(x: bounds.midX, y: bounds.minY),
-        end: CGPoint(x: bounds.midX, y: bounds.maxY),
-        options: []
-    )
-    context.restoreGState()
+/// The `icon.json` content: the pointer group in front of the ripple group, over the fill.
+/// Groups and layers are listed front to back.
+func iconDocument(pointer: [Layer], ripples: [Layer]) -> [String: Any] {
+    [
+        "fill-specializations": [
+            ["value": linearGradient(lightBackground)],
+            ["appearance": "dark", "value": linearGradient(darkBackground)],
+        ],
+        "groups": [
+            [
+                "layers": pointer.map(\.json),
+                "shadow": ["kind": "neutral", "opacity": 0.5],
+                "translucency": ["enabled": false, "value": 0.5],
+                "specular": true,
+            ],
+            [
+                "layers": ripples.map(\.json),
+                "shadow": ["kind": "neutral", "opacity": 0.25],
+                "translucency": ["enabled": true, "value": 0.3],
+                "specular": true,
+            ],
+        ],
+        "supported-platforms": [
+            "squares": ["macOS"]
+        ],
+    ]
 }
 
-// MARK: - Output
+// MARK: - Preview
 
-/// Renders the icon at `pixelSize` x `pixelSize` pixels.
-func renderIcon(pixelSize: Int) -> CGImage {
+/// Xcode's Icon Composer renderer, if this machine has it.
+func ictoolURL() -> URL? {
+    let process = Process()
+    let pipe = Pipe()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/xcode-select")
+    process.arguments = ["-p"]
+    process.standardOutput = pipe
+    guard (try? process.run()) != nil else { return nil }
+    process.waitUntilExit()
+    let output = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+    let developer = URL(fileURLWithPath: output.trimmingCharacters(in: .whitespacesAndNewlines))
+    let url = developer.deletingLastPathComponent()
+        .appendingPathComponent("Applications/Icon Composer.app/Contents/Executables/ictool")
+    return FileManager.default.isExecutableFile(atPath: url.path) ? url : nil
+}
+
+/// Renders one appearance of the icon document at `size` pixels with `ictool`.
+func render(_ icon: URL, ictool: URL, rendition: String, size: Int, into folder: URL) -> CGImage {
+    let output = folder.appendingPathComponent("\(rendition)-\(size).png")
+    let process = Process()
+    process.executableURL = ictool
+    process.arguments = [
+        icon.path, "--export-image", "--output-file", output.path, "--platform", "macOS", "--rendition", rendition,
+        "--width", "\(size)", "--height", "\(size)", "--scale", "1",
+    ]
+    do {
+        try process.run()
+    } catch {
+        fatalError("Cannot run ictool: \(error)")
+    }
+    process.waitUntilExit()
+    guard
+        process.terminationStatus == 0,
+        let source = CGImageSourceCreateWithURL(output as CFURL, nil),
+        let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
+    else {
+        fatalError("ictool failed to render \(rendition) at \(size) px")
+    }
+    return image
+}
+
+/// A contact sheet with one row per appearance: the 1024 render (shown at half size), the 128, 32
+/// and 16 renders at their real pixel size, and the 32 and 16 renders enlarged 8x without
+/// smoothing.
+func renderPreview(rows: [(background: CGColor, icons: [Int: CGImage])]) -> CGImage {
+    let margin = 40
+    let rowHeight = 512 + 2 * margin
+    let width = margin + 512 + margin + 128 + margin + 32 + margin + 16 + margin + 256 + margin + 128 + margin
+    let height = rowHeight * rows.count
     let context = CGContext(
         data: nil,
-        width: pixelSize,
-        height: pixelSize,
+        width: width,
+        height: height,
         bitsPerComponent: 8,
         bytesPerRow: 0,
-        space: colorSpace,
+        space: CGColorSpace(name: CGColorSpace.sRGB)!,
         bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
     )!
-    let pixelScale = CGFloat(pixelSize) / canvasSize
-    context.interpolationQuality = .high
-    context.setShouldAntialias(true)
-    // Flip to a top-left origin and map the 1024 pt canvas onto the output.
-    context.translateBy(x: 0, y: CGFloat(pixelSize))
-    context.scaleBy(x: pixelScale, y: -pixelScale)
-    drawIcon(in: context, pixelScale: pixelScale, style: RenderStyle(pixelSize: pixelSize))
+    for (index, row) in rows.enumerated() {
+        // CG origin is bottom-left: the first row is drawn on top.
+        let rowY = height - (index + 1) * rowHeight
+        context.setFillColor(row.background)
+        context.fill(CGRect(x: 0, y: rowY, width: width, height: rowHeight))
+        let centerY = rowY + rowHeight / 2
+        var x = margin
+        func place(_ image: CGImage, size: Int, smooth: Bool) {
+            context.interpolationQuality = smooth ? .high : .none
+            context.draw(image, in: CGRect(x: x, y: centerY - size / 2, width: size, height: size))
+            x += size + margin
+        }
+        place(row.icons[1024]!, size: 512, smooth: true)
+        place(row.icons[128]!, size: 128, smooth: true)
+        place(row.icons[32]!, size: 32, smooth: true)
+        place(row.icons[16]!, size: 16, smooth: true)
+        place(row.icons[32]!, size: 256, smooth: false)
+        place(row.icons[16]!, size: 128, smooth: false)
+    }
     return context.makeImage()!
 }
 
@@ -401,98 +341,59 @@ func writePNG(_ image: CGImage, to url: URL) {
     }
 }
 
-/// A contact sheet: the 1024 render (shown at half size) next to the 128, 32 and 16 renders at
-/// their real pixel size, plus 32 and 16 enlarged 8x without smoothing, on light and dark.
-func renderPreview(icons: [Int: CGImage]) -> CGImage {
-    let margin = 40
-    let rowHeight = 512 + 2 * margin
-    let width = margin + 512 + margin + 128 + margin + 32 + margin + 16 + margin + 256 + margin + 128 + margin
-    let height = rowHeight * 2
-    let context = CGContext(
-        data: nil,
-        width: width,
-        height: height,
-        bitsPerComponent: 8,
-        bytesPerRow: 0,
-        space: colorSpace,
-        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-    )!
-    let backgrounds = [srgb(0xF5F5F7), srgb(0x1E1E20)]
-    for (row, background) in backgrounds.enumerated() {
-        // CG origin is bottom-left: row 0 (light) is drawn on top.
-        let rowY = height - (row + 1) * rowHeight
-        context.setFillColor(background)
-        context.fill(CGRect(x: 0, y: rowY, width: width, height: rowHeight))
-        let centerY = rowY + rowHeight / 2
-        var x = margin
-        func place(_ image: CGImage, size: Int, smooth: Bool) {
-            context.interpolationQuality = smooth ? .high : .none
-            context.draw(image, in: CGRect(x: x, y: centerY - size / 2, width: size, height: size))
-            x += size + margin
-        }
-        place(icons[1024]!, size: 512, smooth: true)
-        place(icons[128]!, size: 128, smooth: true)
-        place(icons[32]!, size: 32, smooth: true)
-        place(icons[16]!, size: 16, smooth: true)
-        place(icons[32]!, size: 256, smooth: false)
-        place(icons[16]!, size: 128, smooth: false)
-    }
-    return context.makeImage()!
-}
-
-func contentsJSON(entries: [(points: Int, scale: Int)]) -> String {
-    let images = entries.map { entry in
-        """
-            {
-              "filename" : "\(fileName(points: entry.points, scale: entry.scale))",
-              "idiom" : "mac",
-              "scale" : "\(entry.scale)x",
-              "size" : "\(entry.points)x\(entry.points)"
-            }
-        """
-    }
-    return """
-        {
-          "images" : [
-        \(images.joined(separator: ",\n"))
-          ],
-          "info" : {
-            "author" : "xcode",
-            "version" : 1
-          }
-        }
-
-        """
-}
-
-func fileName(points: Int, scale: Int) -> String {
-    scale == 1 ? "icon_\(points)x\(points).png" : "icon_\(points)x\(points)@\(scale)x.png"
-}
-
 // MARK: - Main
 
 let repositoryRoot = URL(fileURLWithPath: #filePath).standardizedFileURL
     .deletingLastPathComponent()
     .deletingLastPathComponent()
-let iconSet = repositoryRoot.appendingPathComponent("AutoClicker/Assets.xcassets/AppIcon.appiconset")
+let iconURL = repositoryRoot.appendingPathComponent("AutoClicker/AppIcon.icon")
+let assetsURL = iconURL.appendingPathComponent("Assets")
 let buildFolder = repositoryRoot.appendingPathComponent("build")
+let fileManager = FileManager.default
 
-let entries: [(points: Int, scale: Int)] = [16, 32, 128, 256, 512].flatMap { [($0, 1), ($0, 2)] }
-var renders: [Int: CGImage] = [:]
-for entry in entries {
-    let pixels = entry.points * entry.scale
-    let image = renders[pixels] ?? renderIcon(pixelSize: pixels)
-    renders[pixels] = image
-    let url = iconSet.appendingPathComponent(fileName(points: entry.points, scale: entry.scale))
-    writePNG(image, to: url)
-    print("Wrote \(url.lastPathComponent) (\(pixels) px)")
+let glyph = Glyph()
+let pointerLayers = [
+    Layer(name: "pointer", path: glyph.pointer, opacity: 1, darkColor: nil, darkOpacity: 1)
+]
+let rippleLayers = [
+    Layer(name: "ring-inner", path: glyph.rings[0], opacity: 0.7, darkColor: darkAccent, darkOpacity: 0.95),
+    Layer(name: "ring-outer", path: glyph.rings[1], opacity: 0.38, darkColor: darkAccent, darkOpacity: 0.55),
+    Layer(name: "press-dot", path: glyph.pressDot, opacity: 0.32, darkColor: darkAccent, darkOpacity: 0.4),
+]
+
+// Start from a clean bundle so renamed layers leave no stale files behind.
+try? fileManager.removeItem(at: iconURL)
+try fileManager.createDirectory(at: assetsURL, withIntermediateDirectories: true)
+for layer in pointerLayers + rippleLayers {
+    try svgDocument(layer.path)
+        .write(to: assetsURL.appendingPathComponent(layer.fileName), atomically: true, encoding: .utf8)
+    print("Wrote Assets/\(layer.fileName)")
 }
+let json = try JSONSerialization.data(
+    withJSONObject: iconDocument(pointer: pointerLayers, ripples: rippleLayers),
+    options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+)
+try (json + Data("\n".utf8)).write(to: iconURL.appendingPathComponent("icon.json"))
+print("Wrote \(iconURL.path)")
 
-try contentsJSON(entries: entries)
-    .write(to: iconSet.appendingPathComponent("Contents.json"), atomically: true, encoding: .utf8)
-print("Wrote Contents.json")
-
-try FileManager.default.createDirectory(at: buildFolder, withIntermediateDirectories: true)
-let previewURL = buildFolder.appendingPathComponent("icon-preview.png")
-writePNG(renderPreview(icons: renders), to: previewURL)
-print("Wrote \(previewURL.path)")
+if let ictool = ictoolURL() {
+    let renders = buildFolder.appendingPathComponent("icon-renders")
+    try fileManager.createDirectory(at: renders, withIntermediateDirectories: true)
+    let appearances: [(rendition: String, background: CGColor)] = [
+        ("Default", srgb(0xF5F5F7)),
+        ("Dark", srgb(0x1E1E20)),
+        ("TintedLight", srgb(0xF5F5F7)),
+        ("TintedDark", srgb(0x1E1E20)),
+    ]
+    let rows = appearances.map { appearance in
+        let icons = [1024, 128, 32, 16].map { size in
+            (size, render(iconURL, ictool: ictool, rendition: appearance.rendition, size: size, into: renders))
+        }
+        return (background: appearance.background, icons: Dictionary(uniqueKeysWithValues: icons))
+    }
+    let previewURL = buildFolder.appendingPathComponent("icon-preview.png")
+    writePNG(renderPreview(rows: rows), to: previewURL)
+    print("Wrote \(previewURL.path)")
+} else {
+    print("Skipped the preview: Icon Composer's ictool was not found (needs Xcode 26 or later).")
+}
