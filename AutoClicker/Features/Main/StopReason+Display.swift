@@ -8,7 +8,10 @@ extension StopReason {
         case .user:
             String(localized: "Stopped by you.", comment: "Stop reason: the user pressed Stop.")
         case .hotkey:
-            String(localized: "Stopped with F6.", comment: "Stop reason: the F6 start/stop hotkey was pressed.")
+            // Generic on purpose: the shortcut may have changed since the run ended.
+            String(
+                localized: "Stopped with the start/stop shortcut.",
+                comment: "Stop reason: the start/stop shortcut (F6 by default) was pressed.")
         case .emergencyEscape:
             String(localized: "Stopped with Esc.", comment: "Stop reason: the Esc emergency stop was pressed.")
         case .cornerFailsafe:

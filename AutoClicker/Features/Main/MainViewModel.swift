@@ -15,9 +15,16 @@ import Observation
 /// clean-up (unregister ESC, cancel sampling, read the final count, publish the reason) lives in one place.
 /// `isRunning` therefore stays `true` until that callback arrives, which takes well under a millisecond.
 ///
+/// ## Start/stop shortcut
+/// `activate()` registers the persisted `toggleHotkey`. `beginRecordingShortcut()` unregisters it while the recorder
+/// waits for a key: Carbon delivers a registered hotkey before the app sees the key, so pressing the current shortcut
+/// could not be recorded otherwise. When recording ends, whether the key was accepted, rejected or Esc cancelled it,
+/// one shortcut is registered again: the new one, or the previous one if the validator or the system refused the new
+/// one (ADR-008).
+///
 /// ## Idle cost
-/// Nothing polls while idle: the sampling task exists only during a run, the debounced save only after an edit and
-/// the countdown only while picking a location.
+/// Nothing polls while idle: the sampling task exists only during a run, the debounced save only after an edit, the
+/// countdown only while picking a location and the key monitor only while recording a shortcut.
 @Observable @MainActor
 final class MainViewModel {
     /// The number of countdown steps shown by `pickLocation()` before the cursor is captured.
@@ -34,8 +41,15 @@ final class MainViewModel {
         }
     }
 
-    /// The start/stop shortcut, as loaded from the settings and saved with them.
+    /// The global start/stop shortcut. It is loaded with the settings and saved as soon as it changes.
     private(set) var toggleHotkey: Hotkey
+
+    /// Whether the view model is waiting for the user to press a new start/stop shortcut.
+    private(set) var isRecordingShortcut = false
+
+    /// Why the last shortcut change did not happen (a rejected key, or a shortcut owned by another app), or `nil`.
+    /// Cleared when recording begins again or the shortcut is reset.
+    private(set) var shortcutWarning: String?
 
     /// Whether a run is active. It turns `false` once the engine has reported the end of the run.
     private(set) var isRunning = false
@@ -50,7 +64,7 @@ final class MainViewModel {
     /// Clicking resumes on its own once the target leaves the window.
     private(set) var isTargetInsideOwnWindow = false
 
-    /// A warning to show when F6 could not be registered, or `nil` when the hotkey works.
+    /// A warning to show when the start/stop shortcut could not be registered, or `nil` when it works.
     private(set) var hotkeyWarning: String?
 
     /// A warning to show while a run is active without the ESC emergency stop, or `nil` when ESC works.
@@ -69,6 +83,23 @@ final class MainViewModel {
         isAccessibilityTrusted
     }
 
+    /// Whether Change… can start recording a new shortcut. Like the other settings, the shortcut is locked while
+    /// running.
+    var canChangeShortcut: Bool {
+        !isRunning
+    }
+
+    /// The display name of the start/stop shortcut for hints, or `nil` while it could not be registered, so the menu
+    /// bar does not advertise a shortcut that does nothing.
+    var advertisedToggleHotkeyName: String? {
+        hotkeyWarning == nil ? toggleHotkey.displayName : nil
+    }
+
+    /// Whether the start/stop shortcut is the default F6, in which case Reset has nothing to do.
+    var isDefaultShortcut: Bool {
+        toggleHotkey == .f6
+    }
+
     /// Whether a Pick Location countdown is in progress.
     var isPickingLocation: Bool {
         pickLocationCountdown != nil
@@ -85,6 +116,7 @@ final class MainViewModel {
     @ObservationIgnored private let counter: ClickCounter
     @ObservationIgnored private let failsafe: FailsafeMonitor
     @ObservationIgnored private let hotkeys: any HotkeyProviding
+    @ObservationIgnored private let shortcutRecorder: any ShortcutRecording
     @ObservationIgnored private let permissionManager: PermissionManager
     @ObservationIgnored private let settingsStore: SettingsStore
     @ObservationIgnored private let geometrySnapshot: @MainActor () -> ScreenGeometry
@@ -116,7 +148,8 @@ final class MainViewModel {
     ///   - engine: The click engine. Its `onStop` is taken over by this view model.
     ///   - counter: The total counter the engine increments.
     ///   - failsafe: The monitor the engine evaluates; this view model keeps its snapshots current.
-    ///   - hotkeys: Registers F6 for the whole app lifetime and ESC while running.
+    ///   - hotkeys: Registers the start/stop shortcut for the whole app lifetime and ESC while running.
+    ///   - shortcutRecorder: Captures the next key press when the user changes the start/stop shortcut.
     ///   - permissionManager: The source of the Accessibility trust state.
     ///   - settingsStore: Loads the configuration and the start/stop shortcut now and saves every change.
     ///   - geometrySnapshot: Reads the screen configuration; injected so tests need no real displays.
@@ -131,6 +164,7 @@ final class MainViewModel {
         counter: ClickCounter,
         failsafe: FailsafeMonitor,
         hotkeys: any HotkeyProviding,
+        shortcutRecorder: any ShortcutRecording,
         permissionManager: PermissionManager,
         settingsStore: SettingsStore,
         geometrySnapshot: @escaping @MainActor () -> ScreenGeometry = { ScreenGeometry.current() },
@@ -147,6 +181,7 @@ final class MainViewModel {
         self.counter = counter
         self.failsafe = failsafe
         self.hotkeys = hotkeys
+        self.shortcutRecorder = shortcutRecorder
         self.permissionManager = permissionManager
         self.settingsStore = settingsStore
         self.geometrySnapshot = geometrySnapshot
@@ -176,9 +211,10 @@ final class MainViewModel {
         samplingTask?.cancel()
         saveTask?.cancel()
         pickLocationTask?.cancel()
+        shortcutRecorder.cancel()
         hotkeys.unregister(.escape)
         if isActivated {
-            hotkeys.unregister(.f6)
+            hotkeys.unregister(toggleHotkey)
         }
         // A run must not outlive its owner; the callback finds `self` gone and does nothing.
         engine.stop()
@@ -186,21 +222,15 @@ final class MainViewModel {
 
     // MARK: - Lifecycle
 
-    /// Registers the F6 start/stop hotkey. Call it once from the composition root; later calls do nothing.
+    /// Registers the persisted start/stop shortcut. Call it once from the composition root; later calls do nothing.
     ///
     /// A registration failure is not fatal: it sets `hotkeyWarning` and the Start button keeps working.
     func activate() {
         guard !isActivated else { return }
         isActivated = true
-        do {
-            try hotkeys.register(.f6) { [weak self] in
-                self?.toggle()
-            }
-            hotkeyWarning = nil
-        } catch {
-            hotkeyWarning = String(
-                localized: "F6 is used by another app. Use the Start button instead.",
-                comment: "Warning shown when the F6 start/stop hotkey could not be registered.")
+        // A recording session in progress registers the shortcut itself when it ends.
+        if !isRecordingShortcut {
+            registerToggleHotkey()
         }
     }
 
@@ -217,6 +247,7 @@ final class MainViewModel {
         guard permissionManager.isTrusted else { return }
 
         cancelPickLocation()
+        cancelRecordingShortcut()
         let snapshot = configuration
         pushFailsafeSnapshots()
         registerEmergencyStop()
@@ -235,7 +266,7 @@ final class MainViewModel {
         requestStop(.user)
     }
 
-    /// Starts when idle and stops with reason `.hotkey` when running. This is what F6 does.
+    /// Starts when idle and stops with reason `.hotkey` when running. This is what the start/stop shortcut does.
     func toggle() {
         if isRunning {
             requestStop(.hotkey)
@@ -281,6 +312,51 @@ final class MainViewModel {
         pickLocationTask?.cancel()
         pickLocationTask = nil
         pickLocationCountdown = nil
+    }
+
+    // MARK: - Start/stop shortcut
+
+    /// Waits for the user to press a new start/stop shortcut, then validates, registers and saves it.
+    ///
+    /// Does nothing while running or while already recording. The current shortcut is unregistered until recording
+    /// ends, so it can be recorded again. Esc cancels; a rejected key, or one the system refuses, keeps the previous
+    /// shortcut and sets `shortcutWarning`.
+    func beginRecordingShortcut() {
+        guard canChangeShortcut, !isRecordingShortcut else { return }
+        shortcutWarning = nil
+        if isActivated {
+            hotkeys.unregister(toggleHotkey)
+        }
+        isRecordingShortcut = true
+        shortcutRecorder.begin { [weak self] key in
+            self?.handleRecordedKey(key)
+        }
+        if !shortcutRecorder.isRecording {
+            // The recorder could not install its monitor, so no key will ever arrive.
+            isRecordingShortcut = false
+            registerToggleHotkey()
+            shortcutWarning = String(
+                localized: "Could not listen for a new shortcut. Try again.",
+                comment: "Warning shown when recording a new start/stop shortcut could not start.")
+        }
+    }
+
+    /// Stops recording and restores the current shortcut. Does nothing when not recording.
+    func cancelRecordingShortcut() {
+        guard isRecordingShortcut else { return }
+        shortcutRecorder.cancel()
+        isRecordingShortcut = false
+        registerToggleHotkey()
+    }
+
+    /// Goes back to F6 as the start/stop shortcut. Cancels a recording in progress; does nothing while running.
+    ///
+    /// If F6 cannot be registered, the current shortcut stays and `shortcutWarning` says why.
+    func resetShortcut() {
+        guard canChangeShortcut else { return }
+        cancelRecordingShortcut()
+        shortcutWarning = nil
+        changeToggleHotkey(to: .f6)
     }
 
     // MARK: - Persistence
@@ -339,10 +415,15 @@ final class MainViewModel {
             }
             emergencyStopWarning = nil
         } catch {
-            // Not fatal: F6, the Stop button and the corner failsafe still stop the run.
+            // Not fatal: the start/stop shortcut, the Stop button and the corner failsafe still stop the run.
+            let shortcut = toggleHotkey.displayName
             emergencyStopWarning = String(
-                localized: "Esc is unavailable as an emergency stop. Use F6, the Stop button or a screen corner.",
-                comment: "Warning shown while clicking when the Esc emergency-stop hotkey could not be registered.")
+                localized:
+                    "Esc is unavailable as an emergency stop. Use \(shortcut), the Stop button or a screen corner.",
+                comment: """
+                    Warning shown while clicking when the Esc emergency stop could not be registered; the argument is \
+                    the start/stop shortcut, such as F6.
+                    """)
         }
     }
 
@@ -403,6 +484,80 @@ final class MainViewModel {
         isTargetInsideOwnWindow = false
         isRunning = false
         lastStopReason = reason
+    }
+
+    // MARK: - Private: start/stop shortcut
+
+    /// Registers `toggleHotkey` and clears or sets `hotkeyWarning`. Does nothing before `activate()`.
+    private func registerToggleHotkey() {
+        guard isActivated else { return }
+        do {
+            try registerToggle(toggleHotkey)
+            hotkeyWarning = nil
+        } catch {
+            let shortcut = toggleHotkey.displayName
+            hotkeyWarning = String(
+                localized: "\(shortcut) is used by another app. Use the Start button instead.",
+                comment: """
+                    Warning shown when the start/stop shortcut could not be registered; the argument is the \
+                    shortcut, such as F6.
+                    """)
+        }
+    }
+
+    private func registerToggle(_ hotkey: Hotkey) throws {
+        try hotkeys.register(hotkey) { [weak self] in
+            self?.toggle()
+        }
+    }
+
+    private func handleRecordedKey(_ key: RecordedKey) {
+        guard isRecordingShortcut else { return }
+        isRecordingShortcut = false
+        switch ShortcutValidator.validate(key) {
+        case .accepted(let hotkey):
+            changeToggleHotkey(to: hotkey)
+        case .rejected(.escapeReserved):
+            // Esc is how the user cancels recording, not a rejected choice, so it gets no warning.
+            registerToggleHotkey()
+        case .rejected(let rejection):
+            shortcutWarning = rejection.displayText
+            registerToggleHotkey()
+        }
+    }
+
+    /// Moves the registration from the current shortcut to `newHotkey` and saves it, or keeps the current one
+    /// registered and sets `shortcutWarning` when the system refuses `newHotkey`.
+    private func changeToggleHotkey(to newHotkey: Hotkey) {
+        guard isActivated else {
+            // Nothing is registered yet; `activate()` registers whatever is current by then.
+            commitToggleHotkey(newHotkey)
+            return
+        }
+        let previous = toggleHotkey
+        // A no-op while recording, which already released it.
+        hotkeys.unregister(previous)
+        do {
+            try registerToggle(newHotkey)
+            hotkeyWarning = nil
+            commitToggleHotkey(newHotkey)
+        } catch {
+            let shortcut = previous.displayName
+            shortcutWarning = String(
+                localized: "This shortcut is in use by another app. Keeping \(shortcut).",
+                comment: """
+                    Warning shown when a new start/stop shortcut could not be registered; the argument is the \
+                    previous shortcut, which stays active.
+                    """)
+            registerToggleHotkey()
+        }
+    }
+
+    /// Adopts `hotkey` and saves right away: a shortcut change is one deliberate action, not a stream of edits to
+    /// debounce. The save also writes any configuration edit still waiting for its debounce.
+    private func commitToggleHotkey(_ hotkey: Hotkey) {
+        toggleHotkey = hotkey
+        performSave()
     }
 
     // MARK: - Private: pick location and saving

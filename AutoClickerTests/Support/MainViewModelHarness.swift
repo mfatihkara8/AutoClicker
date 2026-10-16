@@ -7,7 +7,8 @@ import os
 
 /// A `MainViewModel` wired to a real `ClickEngine` and `FailsafeMonitor` on top of test doubles.
 ///
-/// Nothing touches the real system: clicks go to `MockEventPoster`, hotkeys to `MockHotkeyProvider`, trust comes from
+/// Nothing touches the real system: clicks go to `MockEventPoster`, hotkeys to `MockHotkeyProvider`, shortcut
+/// recording to `MockShortcutRecorder`, trust comes from
 /// `MockPermissionChecker`, settings live in a throwaway `UserDefaults` suite (removed in `deinit`), and the screen,
 /// window and cursor readers return the values held here. All durations are a few milliseconds so the suite stays
 /// fast.
@@ -38,6 +39,7 @@ final class MainViewModelHarness {
     let engineCursor = OSAllocatedUnfairLock<CGPoint?>(initialState: CGPoint(x: 500, y: 400))
     let engine: ClickEngine
     let hotkeys = MockHotkeyProvider()
+    let recorder = MockShortcutRecorder()
     let checker: MockPermissionChecker
     let permissionManager: PermissionManager
     let environment: Environment
@@ -86,6 +88,7 @@ final class MainViewModelHarness {
             counter: counter,
             failsafe: failsafe,
             hotkeys: hotkeys,
+            shortcutRecorder: recorder,
             permissionManager: permissionManager,
             settingsStore: store,
             geometrySnapshot: {
