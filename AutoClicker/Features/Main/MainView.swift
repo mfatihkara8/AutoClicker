@@ -1,85 +1,53 @@
 import SwiftUI
 
-/// Minimal main window: status, counter, Start/Stop and Pick Location. Replaced by the card-based UI in M5 (T-502).
+/// The main window: the permission banner and the run status on top, the settings cards and hotkey hint below.
+///
+/// The status stays pinned so Start/Stop is always visible; the settings scroll when the window is short. All
+/// settings are disabled while a run is active, so each run uses the configuration it was started with.
 struct MainView: View {
-    let viewModel: MainViewModel
+    @Bindable var viewModel: MainViewModel
 
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            PermissionBanner(
-                isTrusted: viewModel.isAccessibilityTrusted,
-                onOpenSettings: viewModel.openAccessibilitySettings,
-                onRequestAccess: viewModel.requestAccessibilityPermission
-            )
-
-            HStack {
-                Label(
-                    viewModel.isRunning ? "Active" : "Inactive",
-                    systemImage: viewModel.isRunning ? "circle.fill" : "circle"
+        VStack(spacing: 0) {
+            VStack(spacing: 12) {
+                PermissionBanner(
+                    isTrusted: viewModel.isAccessibilityTrusted,
+                    onOpenSettings: viewModel.openAccessibilitySettings,
+                    onRequestAccess: viewModel.requestAccessibilityPermission
                 )
-                .foregroundStyle(viewModel.isRunning ? .green : .secondary)
-                .accessibilityIdentifier("statusLabel")
 
-                Spacer()
-
-                Text("Total clicks: \(viewModel.totalClicks)")
-                    .monospacedDigit()
-                    .accessibilityIdentifier("totalClicks")
-                Button("Reset", action: viewModel.resetCounter)
+                StatusCard(
+                    isRunning: viewModel.isRunning,
+                    canStart: viewModel.canStart,
+                    totalClicks: viewModel.totalClicks,
+                    lastStopReason: viewModel.isRunning ? nil : viewModel.lastStopReason?.displayText,
+                    onStart: viewModel.start,
+                    onStop: viewModel.stop,
+                    onResetCounter: viewModel.resetCounter
+                )
             }
+            .padding([.horizontal, .top])
+            .padding(.bottom, 12)
 
-            HStack {
-                if viewModel.isRunning {
-                    Button("Stop", action: viewModel.stop)
-                        .keyboardShortcut(.defaultAction)
-                } else {
-                    Button("Start", action: viewModel.start)
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(!viewModel.canStart)
-                }
+            Divider()
 
-                Spacer()
-
-                if let countdown = viewModel.pickLocationCountdown {
-                    Text("Picking in \(countdown)…")
-                        .monospacedDigit()
-                    Button("Cancel", action: viewModel.cancelPickLocation)
-                } else {
-                    Button("Pick Location", action: viewModel.pickLocation)
+            ScrollView {
+                VStack(spacing: 12) {
+                    settingsCards
                         .disabled(viewModel.isRunning)
+
+                    HotkeyHint(
+                        hotkeyWarning: viewModel.hotkeyWarning,
+                        emergencyStopWarning: viewModel.emergencyStopWarning
+                    )
+                    .padding(.horizontal, 4)
                 }
+                .padding()
             }
-
-            Text("Target: \(targetDescription)")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-
-            if let reason = viewModel.lastStopReason, !viewModel.isRunning {
-                Text(reason.displayText)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("lastStopReason")
-            }
-
-            if viewModel.isTargetInsideOwnWindow {
-                warning(Text("Move the cursor outside the AutoClicker window to start clicking."))
-            }
-            if let hotkeyWarning = viewModel.hotkeyWarning {
-                // Already localized by the view model, so shown verbatim.
-                warning(Text(hotkeyWarning))
-            }
-            if let emergencyStopWarning = viewModel.emergencyStopWarning, viewModel.isRunning {
-                warning(Text(emergencyStopWarning))
-            }
-
-            Text("F6 starts and stops. Esc stops while clicking.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
         }
-        .padding()
-        .frame(minWidth: 420)
+        .frame(minWidth: 480, idealWidth: 500, minHeight: 560, idealHeight: 820)
         .animation(.default, value: viewModel.isAccessibilityTrusted)
         // Poll only while the window is on screen (SPEC section 2).
         .onAppear { viewModel.startPermissionMonitoring() }
@@ -93,24 +61,18 @@ struct MainView: View {
         }
     }
 
-    private var targetDescription: String {
-        switch viewModel.configuration.target {
-        case .currentCursor:
-            String(localized: "current cursor position", comment: "Target description for the cursor target.")
-        case .fixed(let point):
-            String(
-                localized: "x \(Int(point.x.rounded())), y \(Int(point.y.rounded()))",
-                comment: "Target description for a fixed point; the arguments are CG global coordinates.")
+    private var settingsCards: some View {
+        VStack(spacing: 12) {
+            ClickTypeCard(clickType: $viewModel.configuration.clickType)
+            IntervalCard(interval: $viewModel.configuration.interval)
+            TargetCard(
+                target: $viewModel.configuration.target,
+                pickLocationCountdown: viewModel.pickLocationCountdown,
+                isTargetInsideOwnWindow: viewModel.isTargetInsideOwnWindow,
+                onPickLocation: viewModel.pickLocation,
+                onCancelPickLocation: viewModel.cancelPickLocation
+            )
+            StopConditionCard(stopCondition: $viewModel.configuration.stopCondition)
         }
-    }
-
-    private func warning(_ text: Text) -> some View {
-        Label {
-            text
-        } icon: {
-            Image(systemName: "exclamationmark.triangle.fill")
-        }
-        .font(.callout)
-        .foregroundStyle(.orange)
     }
 }
