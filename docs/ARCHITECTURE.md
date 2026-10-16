@@ -40,16 +40,21 @@ This document describes how the requirements in [SPEC.md](SPEC.md) are structure
 AutoClicker/                      Xcode project root
 ├── AutoClicker/
 │   ├── App/
-│   │   └── AutoClickerApp.swift        @main; WindowGroup + optional MenuBarExtra; composition root
+│   │   ├── AutoClickerApp.swift        @main; single Window(id: "main") + MenuBarExtra; composition root
+│   │   └── AppDelegate.swift           keeps the app alive when the main window closes
 │   ├── Features/
 │   │   ├── Main/
 │   │   │   ├── MainView.swift
 │   │   │   ├── MainViewModel.swift     @Observable @MainActor
 │   │   │   └── StopReason+Display.swift localized stop-reason text (kept out of Core)
 │   │   ├── Components/                 PermissionBanner, StatusCard, ClickTypeCard,
-│   │   │                               IntervalCard, TargetCard, StopConditionCard
+│   │   │                               IntervalCard, TargetCard, StopConditionCard, HotkeyHint,
+│   │   │                               NumberField, WarningLabel; pure clamping editors
+│   │   │                               (ClickIntervalEditor, ClickTargetEditor, StopConditionEditor)
 │   │   └── MenuBar/
-│   │       └── MenuBarContent.swift
+│   │       ├── MenuBarContent.swift
+│   │       ├── MenuBarLabel.swift      idle/running SF Symbol; reads only isRunning
+│   │       └── MenuBarPresentation.swift pure status/title text, unit-tested
 │   ├── Core/
 │   │   ├── Engine/
 │   │   │   ├── ClickEngine.swift
