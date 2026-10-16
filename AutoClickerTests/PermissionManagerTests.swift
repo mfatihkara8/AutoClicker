@@ -116,6 +116,32 @@ struct PermissionManagerTests {
         #expect(manager.isPolling == false)
     }
 
+    @Test func refreshDetectsRevocationAndResumesPollingWhileMonitoring() {
+        let checker = MockPermissionChecker(isTrusted: true)
+        let manager = makeManager(checker: checker)
+        manager.startMonitoring()
+        #expect(manager.isPolling == false)
+
+        checker.isTrusted = false
+        manager.refresh()
+
+        #expect(manager.isTrusted == false)
+        #expect(manager.isPolling)
+        manager.stopMonitoring()
+    }
+
+    @Test func refreshWithoutMonitoringDoesNotPoll() {
+        let checker = MockPermissionChecker(isTrusted: true)
+        let manager = makeManager(checker: checker)
+
+        checker.isTrusted = false
+        manager.refresh()
+
+        #expect(manager.isTrusted == false)
+        #expect(manager.isPolling == false)
+        #expect(checker.requestTrustCallCount == 0)
+    }
+
     @Test func openAccessibilitySettingsOpensPrivacyPane() throws {
         let checker = MockPermissionChecker()
         var openedURLs: [URL] = []

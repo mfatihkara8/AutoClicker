@@ -53,7 +53,7 @@ final class PermissionManager {
     /// while monitoring is a no-op apart from the immediate re-read.
     func startMonitoring() {
         isMonitoring = true
-        refresh()
+        updateTrust()
         startPollingIfNeeded()
     }
 
@@ -66,7 +66,17 @@ final class PermissionManager {
     /// Shows the system Accessibility prompt. Call it only from an explicit user action.
     func requestPermission() {
         checker.requestTrust()
-        refresh()
+        updateTrust()
+        startPollingIfNeeded()
+    }
+
+    /// Re-reads trust right now, without prompting.
+    ///
+    /// Polling stops once trust is granted, so a later revocation goes unnoticed until someone asks again. The view
+    /// model calls this before every start and about once a second while clicking. If trust turns out to be missing
+    /// while monitoring is on, polling resumes so the banner reappears and hides again on its own.
+    func refresh() {
+        updateTrust()
         startPollingIfNeeded()
     }
 
@@ -82,7 +92,7 @@ final class PermissionManager {
         await task.value
     }
 
-    private func refresh() {
+    private func updateTrust() {
         let trusted = checker.isTrusted
         // Avoid redundant observation notifications when the value has not changed.
         if trusted != isTrusted {
@@ -96,13 +106,13 @@ final class PermissionManager {
     private func startPollingIfNeeded() {
         guard isMonitoring, !isTrusted, pollingTask == nil else { return }
         let interval = pollInterval
-        // The task inherits main-actor isolation, so `refresh()` runs on the main actor.
+        // The task inherits main-actor isolation, so `updateTrust()` runs on the main actor.
         pollingTask = Task { [weak self] in
             while !Task.isCancelled {
                 // A thrown error here only means cancellation, which the loop condition handles.
                 try? await Task.sleep(for: interval)
                 guard !Task.isCancelled, let self else { return }
-                self.refresh()
+                self.updateTrust()
             }
         }
     }
