@@ -1,10 +1,15 @@
 import Foundation
 import os
 
-/// Loads and saves the user's `ClickConfiguration` in `UserDefaults` as versioned JSON (ADR-007).
+/// Loads and saves the user's `AppSettings` in `UserDefaults` as versioned JSON (ADR-007, ADR-008).
 ///
-/// The value is stored as `Data` under one key, wrapped in an envelope: `{"version": 1, "configuration": {...}}`. The
-/// version lets a later build migrate or reject settings written by another build instead of misreading them.
+/// The value is stored as `Data` under one key, wrapped in an envelope:
+/// `{"version": 2, "configuration": {...}, "toggleHotkey": {...}}`. The version lets a later build migrate or reject
+/// settings written by another build instead of misreading them.
+///
+/// ## Versions
+/// - 1: `{"version": 1, "configuration": {...}}`. Loaded with F6 as the start/stop shortcut.
+/// - 2: adds `toggleHotkey`, the user-configurable start/stop shortcut. Written by this build.
 ///
 /// ## Concurrency
 /// The class is `@MainActor` rather than `Sendable`. `UserDefaults` is documented as thread-safe, but the SDK does
@@ -16,7 +21,7 @@ import os
 @MainActor
 final class SettingsStore {
     /// The schema version written by `save(_:)`.
-    nonisolated static let currentVersion = 1
+    nonisolated static let currentVersion = 2
 
     private let defaults: UserDefaults
     private let key: String
@@ -26,17 +31,19 @@ final class SettingsStore {
     ///
     /// - Parameters:
     ///   - defaults: Where the settings live. The app passes `.standard`; tests pass a throwaway suite.
-    ///   - key: The single `UserDefaults` key that holds the envelope.
+    ///   - key: The single `UserDefaults` key that holds the envelope. Unchanged since version 1, so older settings
+    ///     are found and migrated.
     init(defaults: UserDefaults, key: String = "clickConfiguration") {
         self.defaults = defaults
         self.key = key
     }
 
-    /// Returns the saved configuration, or `.default` when nothing usable is stored.
+    /// Returns the saved settings, or `.default` when nothing usable is stored.
     ///
-    /// A missing value, corrupt data, a malformed configuration or a version this build does not know all fall back
-    /// to `.default`. Settings are never worth crashing over, and the next `save(_:)` overwrites the bad value.
-    func load() -> ClickConfiguration {
+    /// Version 1 settings keep their configuration and get F6 as the start/stop shortcut. A missing value, corrupt
+    /// data, a malformed body or a version this build does not know all fall back to `.default`. Settings are never
+    /// worth crashing over, and the next `save(_:)` overwrites the bad value.
+    func load() -> AppSettings {
         guard let data = defaults.data(forKey: key) else {
             return .default
         }
@@ -49,30 +56,34 @@ final class SettingsStore {
             return .default
         }
 
-        switch header.version {
-        case Self.currentVersion:
-            do {
-                return try decoder.decode(Envelope.self, from: data).configuration
-            } catch {
-                logger.error("Ignoring malformed settings: \(error.localizedDescription, privacy: .public)")
+        do {
+            switch header.version {
+            case Self.currentVersion:
+                let envelope = try decoder.decode(Envelope.self, from: data)
+                return AppSettings(configuration: envelope.configuration, toggleHotkey: envelope.toggleHotkey)
+            case 1:
+                // Version 1 predates the configurable shortcut, when the start/stop hotkey was always F6.
+                let envelope = try decoder.decode(EnvelopeV1.self, from: data)
+                return AppSettings(configuration: envelope.configuration, toggleHotkey: .f6)
+            default:
+                logger.error("Ignoring settings with unknown version \(header.version, privacy: .public)")
                 return .default
             }
-        // Migrations go here: decode an older schema and convert it to the current `ClickConfiguration`, for example
-        // `case 1: return LegacyV1.decode(data).migrated()` once the current version becomes 2.
-        default:
-            logger.error("Ignoring settings with unknown version \(header.version, privacy: .public)")
+        } catch {
+            logger.error("Ignoring malformed settings: \(error.localizedDescription, privacy: .public)")
             return .default
         }
     }
 
-    /// Persists `configuration` immediately as a version `currentVersion` envelope.
+    /// Persists `settings` immediately as a version `currentVersion` envelope.
     ///
-    /// Encoding a `ClickConfiguration` cannot fail in practice. If it ever does, the previously stored value is kept
-    /// and the failure is logged rather than thrown, because the caller has no meaningful way to recover.
-    func save(_ configuration: ClickConfiguration) {
+    /// Encoding cannot fail in practice. If it ever does, the previously stored value is kept and the failure is
+    /// logged rather than thrown, because the caller has no meaningful way to recover.
+    func save(_ settings: AppSettings) {
+        let envelope = Envelope(
+            version: Self.currentVersion, configuration: settings.configuration, toggleHotkey: settings.toggleHotkey)
         do {
-            let data = try JSONEncoder().encode(Envelope(version: Self.currentVersion, configuration: configuration))
-            defaults.set(data, forKey: key)
+            defaults.set(try JSONEncoder().encode(envelope), forKey: key)
         } catch {
             logger.error("Could not encode settings: \(error.localizedDescription, privacy: .public)")
         }
@@ -85,8 +96,15 @@ final class SettingsStore {
         let version: Int
     }
 
-    /// The stored shape of the current schema version.
+    /// The stored shape of the current schema version (2).
     private struct Envelope: Codable {
+        let version: Int
+        let configuration: ClickConfiguration
+        let toggleHotkey: Hotkey
+    }
+
+    /// The stored shape of version 1, kept only to migrate it.
+    private struct EnvelopeV1: Decodable {
         let version: Int
         let configuration: ClickConfiguration
     }

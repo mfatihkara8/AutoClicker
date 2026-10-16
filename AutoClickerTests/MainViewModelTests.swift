@@ -25,7 +25,7 @@ struct MainViewModelTests {
     @Test func initLoadsTheSavedConfigurationWithoutSaving() throws {
         let harness = try Harness()
         let saved = Harness.configuration(milliseconds: 250, stopCondition: .afterClicks(7))
-        harness.store.save(saved)
+        harness.store.save(AppSettings(configuration: saved))
         let writesBefore = harness.defaults.setCallCount
 
         let viewModel = harness.viewModel
@@ -441,7 +441,7 @@ struct MainViewModelTests {
         try await Task.sleep(for: .milliseconds(150))
 
         #expect(defaults.setCallCount == 1)
-        #expect(harness.store.load().interval == ClickInterval(milliseconds: 500))
+        #expect(harness.store.load().configuration.interval == ClickInterval(milliseconds: 500))
     }
 
     @Test func settingTheSameConfigurationDoesNotSave() async throws {
@@ -463,7 +463,7 @@ struct MainViewModelTests {
         viewModel.flushPendingSave()
 
         #expect(harness.defaults.setCallCount == 1)
-        #expect(harness.store.load() == changed)
+        #expect(harness.store.load().configuration == changed)
 
         // The debounced write was cancelled, and a second flush has nothing to write.
         try await Task.sleep(for: .milliseconds(150))

@@ -34,6 +34,9 @@ final class MainViewModel {
         }
     }
 
+    /// The start/stop shortcut, as loaded from the settings and saved with them.
+    private(set) var toggleHotkey: Hotkey
+
     /// Whether a run is active. It turns `false` once the engine has reported the end of the run.
     private(set) var isRunning = false
 
@@ -115,7 +118,7 @@ final class MainViewModel {
     ///   - failsafe: The monitor the engine evaluates; this view model keeps its snapshots current.
     ///   - hotkeys: Registers F6 for the whole app lifetime and ESC while running.
     ///   - permissionManager: The source of the Accessibility trust state.
-    ///   - settingsStore: Loads the configuration now and saves every change.
+    ///   - settingsStore: Loads the configuration and the start/stop shortcut now and saves every change.
     ///   - geometrySnapshot: Reads the screen configuration; injected so tests need no real displays.
     ///   - ownWindowFrames: Snapshots the app's own window frames in CG space for a geometry.
     ///   - cursorLocation: Reads the cursor in CG global space for Pick Location.
@@ -153,7 +156,9 @@ final class MainViewModel {
         self.permissionCheckInterval = permissionCheckInterval
         self.saveDebounce = saveDebounce
         self.countdownTick = countdownTick
-        self.configuration = settingsStore.load()
+        let settings = settingsStore.load()
+        self.configuration = settings.configuration
+        self.toggleHotkey = settings.toggleHotkey
         self.totalClicks = counter.value
         self.lastPermissionCheck = clock.now
 
@@ -428,6 +433,6 @@ final class MainViewModel {
     private func performSave() {
         saveTask?.cancel()
         saveTask = nil
-        settingsStore.save(configuration)
+        settingsStore.save(AppSettings(configuration: configuration, toggleHotkey: toggleHotkey))
     }
 }
