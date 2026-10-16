@@ -5,19 +5,22 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** M2, Click engine (wave 2 of the parallel plan)
+**Current milestone:** M4/M5, ViewModel and hotkeys (wave 3 of the parallel plan)
 
 ## Now
-Wave 2 (parallel worktree agents):
-- [ ] T-204 → T-205 → T-302: `ClickScheduler`, `ClickEngine`, target resolution
-- [ ] T-404 + T-503: `FailsafeMonitor`, `SettingsStore`
+Wave 3 (one worktree agent):
+- [ ] T-501 `MainViewModel`, failsafe wiring, T-402 F6 toggle, T-403 scoped ESC, T-303 Pick Location
 - [ ] Manual: SC-1 (banner hides within 2 s of the grant) and the T-002 follow-up (the grant survives a rebuild)
 
 ## Next
-- Wave 3: T-501 `MainViewModel`, failsafe wiring, T-402 F6, T-403 scoped ESC, T-303 Pick Location
 - Wave 4: T-502 cards and `MainView`, T-504 `MenuBarExtra`
 
 ## Done
+- [x] T-503: `SettingsStore` (versioned JSON envelope in `UserDefaults`)
+- [x] T-404: `FailsafeMonitor` (corner ≤ 2 px, own-window skip); end-to-end SC-9/SC-10 still manual
+- [x] T-302: `.currentCursor` and `.fixed` target resolution in `ClickEngine`
+- [x] T-205: `ClickEngine` and `StopReason`
+- [x] T-204: `ClickScheduler` (absolute deadlines, non-accumulating jitter, drift within ±2% over 1,000 ticks)
 - [x] T-401: `Hotkey`, `HotkeyProviding`, `CarbonHotkeyManager`, `MockHotkeyProvider`
 - [x] T-301: `ScreenGeometry` (AppKit ↔ CG conversion, corners, cursor)
 - [x] T-203: `ClickCounter` (`OSAllocatedUnfairLock`)

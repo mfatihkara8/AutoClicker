@@ -56,6 +56,7 @@ AutoClicker/                      Xcode project root
 │   │   │   ├── ClickConfiguration.swift
 │   │   │   ├── ClickType.swift
 │   │   │   ├── StopCondition.swift
+│   │   │   ├── StopReason.swift
 │   │   │   └── ClickCounter.swift
 │   │   ├── Events/
 │   │   │   ├── EventPosting.swift      protocol
@@ -69,6 +70,7 @@ AutoClicker/                      Xcode project root
 │   │   │   ├── AccessibilityPermissionChecker.swift
 │   │   │   └── PermissionManager.swift @Observable @MainActor
 │   │   ├── Safety/
+│   │   │   ├── FailsafeChecking.swift  protocol + FailsafeDecision
 │   │   │   └── FailsafeMonitor.swift
 │   │   └── Geometry/
 │   │       └── ScreenGeometry.swift
@@ -77,7 +79,8 @@ AutoClicker/                      Xcode project root
 │   └── Assets.xcassets                 Info.plist is generated (GENERATE_INFOPLIST_FILE);
 │                                       sandbox/hardened runtime are build settings
 ├── AutoClickerTests/                  Swift Testing
-│   ├── Mocks/                          MockEventPoster, MockPermissionChecker, MockHotkeyProvider
+│   ├── Mocks/                          MockEventPoster, MockPermissionChecker, MockHotkeyProvider, MockFailsafe
+│   ├── Support/                        test helpers (CallRecorder, waitUntil, drain)
 │   ├── ClickEngineTests.swift
 │   ├── ClickSchedulerTests.swift
 │   ├── StopConditionTests.swift
@@ -103,11 +106,13 @@ AutoClicker/                      Xcode project root
 | `StopReason` | `enum` | `.user`, `.hotkey`, `.emergencyEscape`, `.cornerFailsafe`, `.conditionMet` or `.permissionLost` |
 
 `ClickEngine` does the following on each tick:
-1. Run the failsafe check.
-2. Resolve the target position.
+1. Read the cursor and resolve the target position (`.currentCursor` → cursor, skipped if unreadable; `.fixed(p)` → `p`).
+2. Run the failsafe check (`FailsafeChecking.evaluate(cursor:target:)`): `.stopCornerReached` stops the run, `.skipInsideOwnWindow` skips the click without counting it and sets `isSkippingInsideOwnWindow`.
 3. Post the click.
-4. Increment the counter.
-5. Check the stop condition.
+4. Increment the shared total `ClickCounter` and the per-run count. The engine never resets the total; only the Reset button does.
+5. Check the stop condition against the per-run count and the tick's scheduled time.
+
+The first tick fires one interval after `start`. `onStop(StopReason)` is called exactly once per run, asynchronously on the click queue; the ViewModel hops to the main actor itself. `stop(reason:)` defaults to `.user`.
 
 ### Services and adapters
 
@@ -121,9 +126,10 @@ AutoClicker/                      Xcode project root
 | `PermissionChecking` | `isTrusted` and `requestTrust()` |
 | `AccessibilityPermissionChecker` | Wraps `AXIsProcessTrusted` and `AXIsProcessTrustedWithOptions`. |
 | `PermissionManager` | Exposes the current state to the UI and opens System Settings:<br>• While permission is missing and the window is visible, it polls about every 1 s.<br>• It stops polling once permission is granted. |
-| `FailsafeMonitor` | Does two checks:<br>• `shouldStop(cursor:)` returns true when the cursor is within 2 px of a screen corner.<br>• `isInsideOwnWindow(_ point:)` checks the point against window frames snapshotted on the main actor. |
+| `FailsafeChecking` | `evaluate(cursor:target:) -> FailsafeDecision` (`.proceed`, `.skipInsideOwnWindow`, `.stopCornerReached`). The engine depends only on this protocol. |
+| `FailsafeMonitor` | Implements `FailsafeChecking`, `Sendable` via a lock; the main actor pushes snapshots with `update(geometry:)` / `update(ownWindowFrames:)`, and `ownWindowFrames(geometry:)` snapshots visible, non-minimized windows. Does two checks:<br>• `shouldStop(cursor:)` returns true when the cursor is within 2 px of a screen corner.<br>• `isInsideOwnWindow(_ point:)` checks the point against window frames snapshotted on the main actor. |
 | `ScreenGeometry` | `Sendable` snapshot of the screen frames (`current()` reads `NSScreen` on the main actor). The only place that converts between AppKit and CG coordinates. Provides the screen corners, `isNearCorner(_:tolerance:)`, and the current cursor position via `CGEvent(source: nil)?.location` (optional; `nil` when unavailable). |
-| `SettingsStore` | Loads and saves `ClickConfiguration` as JSON in `UserDefaults`. The schema is versioned. |
+| `SettingsStore` | `@MainActor`. Loads and saves `ClickConfiguration` as a `{"version": 1, "configuration": …}` JSON envelope in an injected `UserDefaults`. Missing, corrupt or unknown-version data loads `.default`. Debouncing is the ViewModel's job. |
 
 ## Key flows
 
