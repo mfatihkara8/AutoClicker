@@ -6,6 +6,12 @@ struct AutoClickerApp: App {
     /// Owned by the app, not the window, so clicking continues while the window is closed.
     @State private var viewModel: MainViewModel
 
+    /// The main window's selected tab. Owned here, next to the window, so the menu commands can select a tab too.
+    @State private var navigation = WindowNavigation()
+
+    /// The app's name and versions, read once from the bundle for About and bug reports.
+    private let appInfo = AppInfo.current()
+
     /// Stops SwiftUI from quitting the app when the main window closes.
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
@@ -62,9 +68,18 @@ struct AutoClickerApp: App {
         // brings the existing window to the front instead of opening a second copy, and File > New does not exist. As
         // the first scene it still opens at launch.
         Window("AutoClicker", id: Self.mainWindowID) {
-            MainView(viewModel: viewModel)
+            MainView(viewModel: viewModel, navigation: navigation, appInfo: appInfo, bugReportURL: bugReportURL)
+                // Every tab is laid out for this size, so the window may grow but never shrink below it (SPEC §3.5).
+                .frame(
+                    minWidth: WindowMetrics.defaultContentSize.width,
+                    minHeight: WindowMetrics.defaultContentSize.height)
         }
+        .defaultSize(WindowMetrics.defaultContentSize)
+        .windowResizability(.contentMinSize)
         .keyboardShortcut("0")
+        .commands {
+            AppCommands(navigation: navigation, mainWindowID: Self.mainWindowID, bugReportURL: bugReportURL)
+        }
 
         // Always present, so the app keeps running (and clicking) after the window is closed. Hidden when hosting the
         // unit tests, so a test run leaves no icon in the user's menu bar.
@@ -74,6 +89,11 @@ struct AutoClickerApp: App {
             MenuBarLabel(viewModel: viewModel)
         }
         .menuBarExtraStyle(.menu)
+    }
+
+    /// The new-issue link prefilled with this app's and macOS's versions.
+    private var bugReportURL: URL? {
+        BugReportLink.url(for: appInfo)
     }
 
     /// The user's defaults, or a throwaway suite that is wiped on every launch when running as a test host.
