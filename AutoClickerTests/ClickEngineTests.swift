@@ -50,13 +50,15 @@ struct ClickEngineTests {
         _ clickType: ClickType = .left,
         milliseconds: Int = 1,
         target: ClickTarget = .fixed(CGPoint(x: 10, y: 20)),
-        stopCondition: StopCondition = .never
+        stopCondition: StopCondition = .never,
+        modifiers: ClickModifiers = []
     ) -> ClickConfiguration {
         ClickConfiguration(
             clickType: clickType,
             interval: ClickInterval(milliseconds: milliseconds),
             target: target,
-            stopCondition: stopCondition)
+            stopCondition: stopCondition,
+            modifiers: modifiers)
     }
 
     // MARK: - Click types and targets
@@ -70,6 +72,40 @@ struct ClickEngineTests {
         #expect(await harness.waitForStop())
 
         #expect(harness.poster.posts == Array(repeating: MockEventPoster.Post(type: clickType, point: point), count: 3))
+    }
+
+    @Test(arguments: ClickType.allCases)
+    func passesTheConfiguredModifiersOnEveryClick(_ clickType: ClickType) async {
+        let harness = Harness()
+        let point = CGPoint(x: 10, y: 20)
+        let modifiers: ClickModifiers = [.shift, .command]
+
+        harness.engine.start(
+            Self.configuration(clickType, target: .fixed(point), stopCondition: .afterClicks(3), modifiers: modifiers))
+        #expect(await harness.waitForStop())
+
+        let expected = MockEventPoster.Post(type: clickType, point: point, modifiers: modifiers)
+        #expect(harness.poster.posts == Array(repeating: expected, count: 3))
+    }
+
+    @Test func passesNoModifiersForAPlainRun() async {
+        let harness = Harness()
+
+        harness.engine.start(Self.configuration(stopCondition: .afterClicks(2)))
+        #expect(await harness.waitForStop())
+
+        #expect(harness.poster.posts.map(\.modifiers) == [[], []])
+    }
+
+    @Test func eachRunUsesItsOwnModifiers() async {
+        let harness = Harness()
+
+        harness.engine.start(Self.configuration(stopCondition: .afterClicks(1), modifiers: .control))
+        #expect(await harness.waitForStop())
+        harness.engine.start(Self.configuration(stopCondition: .afterClicks(1), modifiers: [.option, .shift]))
+        #expect(await waitUntil { harness.stops.count == 2 })
+
+        #expect(harness.poster.posts.map(\.modifiers) == [.control, [.option, .shift]])
     }
 
     @Test func currentCursorTargetClicksWhereTheCursorIs() async {

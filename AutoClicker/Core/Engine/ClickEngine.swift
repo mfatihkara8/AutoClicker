@@ -8,7 +8,7 @@ import os
 /// 1. reads the cursor and resolves the target (`.currentCursor` uses the cursor; a tick with no readable cursor is
 ///    skipped; `.fixed(p)` uses `p`),
 /// 2. asks the failsafe what to do (`nil` failsafe means always proceed),
-/// 3. posts the click,
+/// 3. posts the click with the run's modifiers,
 /// 4. increments the shared total `ClickCounter` and the run's own click count,
 /// 5. checks the stop condition.
 ///
@@ -181,7 +181,7 @@ final class ClickEngine: Sendable {
             case .skipInsideOwnWindow:
                 setSkippingInsideOwnWindow(true, runID: runID)
             case .proceed:
-                poster.post(configuration.clickType, at: target)
+                poster.post(configuration.clickType, at: target, modifiers: configuration.modifiers)
                 counter.increment()
                 state.withLock { state in
                     guard state.runID == runID else {
