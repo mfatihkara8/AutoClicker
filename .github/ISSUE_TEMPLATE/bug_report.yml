@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in AutoClicker does not work as expected.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Report a Bug… in AutoClicker fills in the versions below for you.
+  - type: input
+    id: app-version
+    attributes:
+      label: AutoClicker version
+      description: Shown on the About tab, for example "1.0 (1)".
+      placeholder: "1.0 (1)"
+    validations:
+      required: false
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      description: Apple menu > About This Mac, for example "26.1".
+      placeholder: "26.1"
+    validations:
+      required: false
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+      description: Describe what you expected to happen instead.
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The settings you used and the steps that lead to the problem.
+      placeholder: |
+        1. Set the click type to …
+        2. Press Start …
+        3. …
+    validations:
+      required: false
