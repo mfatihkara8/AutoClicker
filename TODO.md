@@ -12,12 +12,12 @@ Parallel worktree agents:
 - [ ] SC-7 (fixed target on a secondary monitor), only if a second display is available
 
 ## Next
-- **Bug: the app icon does not show in the Dock** (reported 2026-10-16 after the `.icon` merge). To check: Dock/icon cache (`killall Dock`, `sudo rm -rf /Library/Caches/com.apple.iconservices.store`), whether the built `Info.plist` has `CFBundleIconName`/`CFBundleIconFile`, and whether `Assets.car` holds the `AppIcon` stack.
 - **Feature: modifier + click.** Let the user hold Shift, Control, Option and/or Command while clicking (e.g. ⇧-click, ⌃-click). Needs a SPEC update, a `ClickConfiguration` field (settings schema v3 with migration), event flags in `CGEventPoster` and a control in the click type card.
 - **Manual check pending (user will do it later):** configurable shortcut — change to ⌃⌥K, use it from another app, ⇧K is rejected, it persists after relaunch, Reset returns to F6.
 - M6: Hardening and release (T-601 to T-604)
 
 ## Done
+- [x] Dock icon bug (2026-10-28): the build was fine; LaunchServices had 15 stale registrations of the bundle ID (old Xcode DerivedData template builds, deleted agent worktrees). Fixed by unregistering them with `lsregister -u`, re-registering the current build and restarting the Dock.
 - [x] T-703: configurable shortcut wired into the ViewModel, shortcut card and menu bar
 - [x] T-702: `ShortcutValidator`, `ShortcutRecording`, `LocalShortcutRecorder`
 - [x] T-701: settings schema v2 with the start/stop shortcut (v1 migrates to F6)
