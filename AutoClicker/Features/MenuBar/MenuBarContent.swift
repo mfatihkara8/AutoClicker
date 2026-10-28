@@ -17,7 +17,10 @@ struct MenuBarContent: View {
             isRunning: viewModel.isRunning,
             totalClicks: viewModel.totalClicks,
             lastStopReason: viewModel.lastStopReason,
-            toggleHotkeyName: viewModel.advertisedToggleHotkeyName
+            toggleHotkeyName: viewModel.advertisedToggleHotkeyName,
+            // Settings are locked while running, so the editable configuration is the one the run started with.
+            clickType: viewModel.configuration.clickType,
+            modifiers: viewModel.configuration.modifiers
         )
 
         // A plain `Text` becomes a disabled, informational menu item.

@@ -9,22 +9,30 @@ final class CGEventPoster: EventPosting {
     /// Creates a poster. Creating one posts nothing.
     init() {}
 
-    func post(_ type: ClickType, at point: CGPoint) {
+    func post(_ type: ClickType, at point: CGPoint, modifiers: ClickModifiers) {
         let source = CGEventSource(stateID: .hidSystemState)
-        for event in Self.makeEvents(for: type, at: point, source: source) {
+        for event in Self.makeEvents(for: type, at: point, modifiers: modifiers, source: source) {
             event.post(tap: .cghidEventTap)
         }
     }
 
-    /// Builds, without posting, the events that make up one click of `type` at `point`.
+    /// Builds, without posting, the events that make up one click of `type` at `point` with `modifiers` held.
     ///
     /// Left, right and middle produce one down/up pair with click state 1. Double produces two left pairs; the second
     /// carries click state 2, which the system needs to recognize a double click. Middle uses `.otherMouse*` events
     /// with the center button.
     ///
+    /// Every event's flags are set to exactly `flags(for: modifiers)`, also when `modifiers` is empty (ADR-009). An
+    /// event created from a `.hidSystemState` source starts with that source's current modifier state, so keys the
+    /// user physically holds (or Caps Lock) would otherwise leak into a plain click. Assigning `flags` replaces them
+    /// rather than adding to them.
+    ///
     /// Returns an empty array if any event cannot be created: posting a down without its matching up would leave the
     /// button stuck.
-    static func makeEvents(for type: ClickType, at point: CGPoint, source: CGEventSource?) -> [CGEvent] {
+    static func makeEvents(
+        for type: ClickType, at point: CGPoint, modifiers: ClickModifiers, source: CGEventSource?
+    ) -> [CGEvent] {
+        let eventFlags = flags(for: modifiers)
         let pairs: [(down: CGEventType, up: CGEventType, button: CGMouseButton, clickState: Int64)]
         switch type {
         case .left:
@@ -52,9 +60,20 @@ final class CGEventPoster: EventPosting {
                     return []
                 }
                 event.setIntegerValueField(.mouseEventClickState, value: pair.clickState)
+                event.flags = eventFlags
                 events.append(event)
             }
         }
         return events
+    }
+
+    /// The `CGEventFlags` that mark `modifiers` as held on a mouse event, and nothing else.
+    static func flags(for modifiers: ClickModifiers) -> CGEventFlags {
+        var flags: CGEventFlags = []
+        if modifiers.contains(.shift) { flags.insert(.maskShift) }
+        if modifiers.contains(.control) { flags.insert(.maskControl) }
+        if modifiers.contains(.option) { flags.insert(.maskAlternate) }
+        if modifiers.contains(.command) { flags.insert(.maskCommand) }
+        return flags
     }
 }

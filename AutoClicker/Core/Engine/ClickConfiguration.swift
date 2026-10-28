@@ -17,13 +17,17 @@ struct ClickConfiguration: Sendable, Codable, Equatable {
     var target: ClickTarget
     /// When the run ends on its own.
     var stopCondition: StopCondition
+    /// The modifier keys held for every click, whatever its type. Empty by default.
+    var modifiers: ClickModifiers = []
 
     // Explicit keys: renaming a property must not silently change the persisted JSON. Schema changes go through the
-    // version handled by `SettingsStore`.
+    // version handled by `SettingsStore`. Every key is required, `modifiers` included: older schemas without it are
+    // migrated by `SettingsStore`, not guessed at here.
     private enum CodingKeys: String, CodingKey {
         case clickType
         case interval
         case target
         case stopCondition
+        case modifiers
     }
 }

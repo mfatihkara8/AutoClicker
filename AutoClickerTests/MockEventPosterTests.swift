@@ -7,19 +7,19 @@ import Testing
 struct MockEventPosterTests {
     @Test func recordsPostsInOrder() {
         let poster = MockEventPoster()
-        poster.post(.left, at: CGPoint(x: 1, y: 2))
-        poster.post(.double, at: CGPoint(x: 3, y: 4))
+        poster.post(.left, at: CGPoint(x: 1, y: 2), modifiers: [])
+        poster.post(.double, at: CGPoint(x: 3, y: 4), modifiers: [.shift, .command])
         #expect(
             poster.posts == [
                 MockEventPoster.Post(type: .left, point: CGPoint(x: 1, y: 2)),
-                MockEventPoster.Post(type: .double, point: CGPoint(x: 3, y: 4)),
+                MockEventPoster.Post(type: .double, point: CGPoint(x: 3, y: 4), modifiers: [.shift, .command]),
             ])
         #expect(poster.count == 2)
     }
 
     @Test func resetClearsRecordedPosts() {
         let poster = MockEventPoster()
-        poster.post(.right, at: .zero)
+        poster.post(.right, at: .zero, modifiers: [])
         poster.reset()
         #expect(poster.posts.isEmpty)
     }
@@ -30,7 +30,7 @@ struct MockEventPosterTests {
         let workers = 8
         DispatchQueue.concurrentPerform(iterations: workers) { _ in
             for _ in 0..<postsPerWorker {
-                poster.post(.middle, at: .zero)
+                poster.post(.middle, at: .zero, modifiers: [])
             }
         }
         #expect(poster.count == postsPerWorker * workers)
@@ -40,8 +40,9 @@ struct MockEventPosterTests {
         let poster = MockEventPoster()
         let posting: any EventPosting = poster
         for type in ClickType.allCases {
-            posting.post(type, at: CGPoint(x: 10, y: 20))
+            posting.post(type, at: CGPoint(x: 10, y: 20), modifiers: .option)
         }
         #expect(poster.posts.map(\.type) == ClickType.allCases)
+        #expect(poster.posts.allSatisfy { $0.modifiers == .option })
     }
 }

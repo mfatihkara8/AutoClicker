@@ -376,6 +376,8 @@ struct MainViewModelShortcutTests {
             totalClicks: viewModel.totalClicks,
             lastStopReason: viewModel.lastStopReason,
             toggleHotkeyName: viewModel.advertisedToggleHotkeyName,
+            clickType: viewModel.configuration.clickType,
+            modifiers: viewModel.configuration.modifiers,
             locale: Locale(identifier: "en_US"))
 
         #expect(viewModel.advertisedToggleHotkeyName == "⌃⌥K")
