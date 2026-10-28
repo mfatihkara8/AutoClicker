@@ -5,10 +5,12 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** UI redesign from the user's drawing, then M6
+**Current milestone:** M9, Tabbed window (before M6)
 
 ## Now
-- [ ] UI redesign: follow the drawing the user is sending
+- [ ] T-901: tab shell, toolbar Start/Stop, menu commands
+- [ ] T-902: Main and About tabs, bug report form
+- [ ] T-903: Click and Shortcuts tabs
 - [ ] Manual: ⌘-click a link opens a new tab, ⇧⌘-click multi-selects in Finder, modifiers survive a relaunch
 - [ ] SC-7 (fixed target on a secondary monitor), only if a second display is available
 

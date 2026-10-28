@@ -105,15 +105,26 @@ Implements the flow in section 2. It is `@Observable` and `@MainActor`.
 - **Own-window protection:** if the target point is inside one of the app's own windows, the click is skipped and a warning is shown.
 
 ### 3.5 User interface
-- Active/Inactive status indicator.
-- Total click counter, with a reset button.
-- Settings cards:
-  - click type,
-  - interval and jitter,
-  - target position,
-  - stop condition.
-- A hotkey hint showing F6 and ESC.
-- Optional `MenuBarExtra` with the status and Start/Stop.
+- **Window and tabs:**
+  - One main window with four tabs: **Main**, **Click**, **Shortcuts** and **About**. It always opens on Main; the last tab is not remembered.
+  - Tabs use the native SwiftUI `TabView`, centered at the top of the window, with no custom styling. On macOS 26 and later this is the system's Liquid Glass tab bar.
+  - The user can switch the tabs to a sidebar with the system's own toolbar control (`sidebarAdaptable`, macOS 15 and later). That choice is remembered. On macOS 14 the tabs stay at the top with the standard look.
+  - Every tab fits the default window size (about 560×520) without scrolling. The window can grow but cannot shrink below that size. If the Click tab does not fit, the window gets wider and that tab uses two columns, rather than scrolling.
+- **On every tab:** a compact Start/Stop button with a status dot at the trailing end of the toolbar, and the Accessibility permission banner at the top while permission is missing.
+- **Main tab**, top to bottom:
+  1. Active/Inactive status.
+  2. The big total click counter with Reset.
+  3. The big Start/Stop button.
+  4. A one-line summary of the current settings, for example "⇧-Left click · 100 ms · Cursor · Never stops".
+  5. The last stop reason.
+  6. Warnings, such as the own-window warning.
+  7. The shortcut hint, for example "F6 start/stop · Esc stop".
+- **Click tab:** a grouped `Form` (System Settings style) with sections for the click type and held modifiers, interval and jitter, target with Pick Location, and the stop condition. Locked while clicking.
+- **Shortcuts tab:** a grouped `Form` with the start/stop shortcut (Change…, Reset) and the fixed Esc emergency stop.
+- **About tab:** the app icon, name and version, the Accessibility permission state (with "Open System Settings" when missing), the GitHub link, the MIT license, and **Report a Bug…**.
+- **Report a Bug…** opens the repository's new-issue page with the bug report form, prefilled with the app version and macOS version and nothing else. The repository has a `.github/ISSUE_TEMPLATE/bug_report.yml` issue form. While the repository is private, only its collaborators can use the link.
+- **Menus:** "About AutoClicker" in the app menu selects the About tab, Settings… (⌘,) selects the Shortcuts tab, and the Help menu has Report a Bug….
+- **Menu bar extra:** always visible, with the status and Start/Stop (unchanged).
 
 ### 3.6 Persistence
 - All settings are persisted with `UserDefaults`.

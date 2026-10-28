@@ -184,6 +184,28 @@ M8 is done before M6 (see [ROADMAP.md](ROADMAP.md)).
     - Four toggles (⇧ ⌃ ⌥ ⌘) edit `configuration.modifiers` and are locked while clicking. ⌃ with a left or double click shows the context-menu hint.
     - The menu bar status names the modifiers (for example "⇧-Left click"), and that text is unit-tested.
 
+## M9: Tabbed window
+
+M9 is done before M6 (see [ROADMAP.md](ROADMAP.md)).
+
+- **T-901: Add the tab shell**
+  - **Files:** `Features/Main/MainView.swift` (the `TabView` container), `App/AutoClickerApp.swift` (window size and commands), `Features/Tabs/WindowMetrics.swift` (read only)
+  - **Done when:**
+    - The four tabs are shown with the native `TabView` and `sidebarAdaptable` where available, and the window always opens on Main.
+    - The toolbar Start/Stop and the permission banner are present on every tab.
+    - "About AutoClicker" selects About, ⌘, selects Shortcuts, and Help has Report a Bug….
+    - The window cannot shrink below `WindowMetrics.defaultContentSize`.
+- **T-902: Add the Main and About tabs**
+  - **Files:** `Features/Tabs/MainTab.swift`, `Features/Tabs/AboutTab.swift`, a pure bug-report URL builder, `.github/ISSUE_TEMPLATE/bug_report.yml`
+  - **Done when:**
+    - Main shows the seven items from SPEC §3.5 in order, and its settings summary text is unit-tested.
+    - About shows the app info and permission state, and the bug report URL builder is unit-tested (prefilled versions only).
+- **T-903: Add the Click and Shortcuts tabs**
+  - **Files:** `Features/Tabs/ClickTab.swift`, `Features/Tabs/ShortcutsTab.swift`, the existing card components they replace
+  - **Done when:**
+    - Both tabs are grouped `Form`s with the sections from SPEC §3.5, reusing the existing clamping editors.
+    - The Click tab fits the default window size without scrolling, or `WindowMetrics` is widened to a two-column layout.
+
 ## M6: Hardening and release
 
 - **T-601: Profile with Instruments**

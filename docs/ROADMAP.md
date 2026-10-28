@@ -83,6 +83,12 @@ Added after M7 and done **before** M6, so that 0.1.0 ships with it.
 - **Deliverables:** `ClickModifiers` in `ClickConfiguration` (settings schema v3), event flags in `CGEventPoster` ([ADR-009](DECISIONS.md#adr-009-modifier-clicks-via-event-flags-only)), and the "Hold" row in the click type card.
 - **Done when:** ⇧⌘-click selects several files in Finder, ⌘-click opens a link in a new browser tab, and the modifiers survive a relaunch.
 
+### M9: Tabbed window
+Added after M8 and done **before** M6, so that 0.1.0 ships with it.
+- **Goal:** replace the single scrolling window with the four-tab layout from SPEC §3.5.
+- **Deliverables:** the tab shell with the toolbar Start/Stop and menu commands, the Main, Click, Shortcuts and About tabs, and the bug report issue form.
+- **Done when:** every tab fits the default window size without scrolling, on macOS 26 the tab bar is the system Liquid Glass one, and the menu commands select the right tabs.
+
 ## Phase 2: Productivity (planned)
 - Profiles: saved and named configurations.
 - Multi-point and sequential clicking with a per-point delay.
