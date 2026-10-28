@@ -27,7 +27,15 @@ final class SettingsStoreTests {
         clickType: .double,
         interval: ClickInterval(hours: 1, minutes: 2, seconds: 3, milliseconds: 456, jitterMilliseconds: 25),
         target: .fixed(CGPoint(x: 1234.5, y: -180)),
-        stopCondition: .afterDuration(.seconds(2) + .milliseconds(500)))
+        stopCondition: .afterDuration(.seconds(2) + .milliseconds(500)),
+        modifiers: [.shift, .command])
+
+    /// `customConfiguration` as versions 1 and 2 could hold it: they predate modifiers.
+    private static let legacyConfiguration: ClickConfiguration = {
+        var configuration = customConfiguration
+        configuration.modifiers = []
+        return configuration
+    }()
 
     /// ⌃⌥K, recorded on a layout that labels the key "K".
     private static let customHotkey = Hotkey(
@@ -105,6 +113,19 @@ final class SettingsStoreTests {
         #expect(store.load() == settings)
     }
 
+    @Test(arguments: [
+        ClickModifiers(),
+        .shift, .control, .option, .command,
+        [.shift, .command], [.control, .option], [.shift, .control, .option, .command],
+    ])
+    func roundTripsEveryKindOfModifierSet(modifiers: ClickModifiers) {
+        let store = SettingsStore(defaults: defaults)
+        var settings = AppSettings.default
+        settings.configuration.modifiers = modifiers
+        store.save(settings)
+        #expect(store.load() == settings)
+    }
+
     @Test func laterSaveReplacesTheEarlierOne() {
         let store = SettingsStore(defaults: defaults)
         store.save(Self.customSettings)
@@ -114,7 +135,7 @@ final class SettingsStoreTests {
 
     // MARK: - Migration
 
-    @Test func versionOneMigratesWithF6AsTheShortcut() {
+    @Test func versionOneMigratesWithF6AsTheShortcutAndNoModifiers() {
         // A literal blob in the version 1 format, so the test does not depend on today's encoder.
         store(
             json: #"{"version":1,"configuration":{"clickType":"right","#
@@ -130,25 +151,93 @@ final class SettingsStoreTests {
             target: .fixed(CGPoint(x: 640, y: -12.5)),
             stopCondition: .afterClicks(42))
         #expect(loaded.configuration == expected)
+        #expect(loaded.configuration.modifiers.isEmpty)
         #expect(loaded.toggleHotkey == .f6)
         #expect(loaded.toggleHotkey.keyLabel == nil)
     }
 
     @Test func versionOneWrittenByTheEncoderMigratesToo() throws {
-        store(json: #"{"version":1,"configuration":"# + (try Self.json(of: Self.customConfiguration)) + "}")
-        #expect(SettingsStore(defaults: defaults).load() == AppSettings(configuration: Self.customConfiguration))
+        store(json: #"{"version":1,"configuration":"# + (try Self.json(of: Self.legacyConfiguration)) + "}")
+        #expect(SettingsStore(defaults: defaults).load() == AppSettings(configuration: Self.legacyConfiguration))
     }
 
-    @Test func migratedSettingsAreSavedAsVersionTwo() throws {
-        store(json: #"{"version":1,"configuration":"# + (try Self.json(of: Self.customConfiguration)) + "}")
+    @Test func versionTwoMigratesWithItsShortcutAndNoModifiers() {
+        // A literal blob in the version 2 format, so the test does not depend on today's encoder.
+        store(
+            json: #"{"version":2,"configuration":{"clickType":"middle","#
+                + #""interval":{"hours":0,"minutes":1,"seconds":0,"milliseconds":5,"jitterMilliseconds":0},"#
+                + #""target":{"kind":"currentCursor"},"#
+                + #""stopCondition":{"kind":"never"}},"#
+                + #""toggleHotkey":{"keyCode":40,"modifiers":6144,"keyLabel":"K"}}"#)
+
+        let loaded = SettingsStore(defaults: defaults).load()
+
+        let expected = ClickConfiguration(
+            clickType: .middle,
+            interval: ClickInterval(minutes: 1, milliseconds: 5),
+            target: .currentCursor,
+            stopCondition: .never)
+        #expect(loaded.configuration == expected)
+        #expect(loaded.configuration.modifiers.isEmpty)
+        #expect(loaded.toggleHotkey == Self.customHotkey)
+        #expect(loaded.toggleHotkey.keyLabel == "K")
+    }
+
+    @Test func versionTwoWrittenByTheEncoderMigratesToo() throws {
+        let configuration = try Self.json(of: Self.legacyConfiguration)
+        store(
+            json: #"{"version":2,"configuration":"# + configuration
+                + #","toggleHotkey":{"keyCode":40,"modifiers":6144}}"#)
+        #expect(
+            SettingsStore(defaults: defaults).load()
+                == AppSettings(configuration: Self.legacyConfiguration, toggleHotkey: Self.customHotkey))
+    }
+
+    @Test func versionTwoWithAnInvalidShortcutFallsBackToF6AndKeepsTheConfiguration() throws {
+        let configuration = try Self.json(of: Self.legacyConfiguration)
+        store(
+            json: #"{"version":2,"configuration":"# + configuration
+                + #","toggleHotkey":{"keyCode":53,"modifiers":0}}"#)
+        #expect(SettingsStore(defaults: defaults).load() == AppSettings(configuration: Self.legacyConfiguration))
+    }
+
+    @Test(arguments: [1, 2])
+    func migratedSettingsAreSavedAsVersionThree(version: Int) throws {
+        let configuration = try Self.json(of: Self.legacyConfiguration)
+        let hotkey = version == 2 ? #","toggleHotkey":{"keyCode":97,"modifiers":0}"# : ""
+        store(json: #"{"version":\#(version),"configuration":"# + configuration + hotkey + "}")
         let store = SettingsStore(defaults: defaults)
 
         store.save(store.load())
 
         let envelope = try storedEnvelope()
-        #expect(envelope["version"] as? Int == 2)
+        #expect(envelope["version"] as? Int == 3)
         #expect(envelope["toggleHotkey"] is [String: Any])
-        #expect(store.load() == AppSettings(configuration: Self.customConfiguration, toggleHotkey: .f6))
+        let storedConfiguration = try #require(envelope["configuration"] as? [String: Any])
+        #expect(storedConfiguration["modifiers"] as? [String] == [])
+        #expect(store.load() == AppSettings(configuration: Self.legacyConfiguration, toggleHotkey: .f6))
+    }
+
+    @Test func versionThreeLiteralLoadsItsModifiers() {
+        store(
+            json: #"{"version":3,"configuration":{"clickType":"left","#
+                + #""interval":{"hours":0,"minutes":0,"seconds":0,"milliseconds":100,"jitterMilliseconds":0},"#
+                + #""target":{"kind":"currentCursor"},"stopCondition":{"kind":"never"},"#
+                + #""modifiers":["shift","command"]},"#
+                + #""toggleHotkey":{"keyCode":97,"modifiers":0}}"#)
+        var expected = AppSettings.default
+        expected.configuration.modifiers = [.shift, .command]
+        #expect(SettingsStore(defaults: defaults).load() == expected)
+    }
+
+    @Test func versionThreeWithoutModifiersLoadsTheDefault() {
+        // Version 3 always stores the modifiers; a configuration without them is not version 3 and is not guessed at.
+        store(
+            json: #"{"version":3,"configuration":{"clickType":"right","#
+                + #""interval":{"hours":0,"minutes":0,"seconds":1,"milliseconds":0,"jitterMilliseconds":0},"#
+                + #""target":{"kind":"currentCursor"},"stopCondition":{"kind":"never"}},"#
+                + #""toggleHotkey":{"keyCode":97,"modifiers":0}}"#)
+        #expect(SettingsStore(defaults: defaults).load() == .default)
     }
 
     @Test func malformedVersionOneLoadsTheDefault() {
@@ -178,22 +267,35 @@ final class SettingsStoreTests {
         #expect(SettingsStore(defaults: defaults).load() == .default)
     }
 
-    @Test func malformedConfigurationLoadsTheDefault() {
+    @Test(arguments: [2, 3])
+    func malformedConfigurationLoadsTheDefault(version: Int) {
         store(
-            json: #"{"version":2,"configuration":{"clickType":"triple"},"#
+            json: #"{"version":\#(version),"configuration":{"clickType":"triple"},"#
                 + #""toggleHotkey":{"keyCode":40,"modifiers":6144}}"#)
         #expect(SettingsStore(defaults: defaults).load() == .default)
     }
 
-    @Test func versionTwoWithoutAHotkeyLoadsTheDefault() throws {
-        // Version 2 always has a shortcut; an envelope without one is not version 2 and must not be guessed at.
-        store(json: #"{"version":2,"configuration":"# + (try Self.json(of: Self.customConfiguration)) + "}")
+    @Test(arguments: [2, 3])
+    func envelopeWithoutAHotkeyLoadsTheDefault(version: Int) throws {
+        // Versions 2 and 3 always have a shortcut; an envelope without one must not be guessed at.
+        let configuration = try Self.json(of: Self.customConfiguration)
+        store(json: #"{"version":\#(version),"configuration":"# + configuration + "}")
         #expect(SettingsStore(defaults: defaults).load() == .default)
     }
 
     @Test func malformedHotkeyLoadsTheDefault() throws {
         let configuration = try Self.json(of: Self.customConfiguration)
-        store(json: #"{"version":2,"configuration":"# + configuration + #","toggleHotkey":{"keyCode":"F6"}}"#)
+        store(json: #"{"version":3,"configuration":"# + configuration + #","toggleHotkey":{"keyCode":"F6"}}"#)
+        #expect(SettingsStore(defaults: defaults).load() == .default)
+    }
+
+    @Test func malformedModifiersLoadTheDefault() {
+        store(
+            json: #"{"version":3,"configuration":{"clickType":"left","#
+                + #""interval":{"hours":0,"minutes":0,"seconds":0,"milliseconds":100,"jitterMilliseconds":0},"#
+                + #""target":{"kind":"currentCursor"},"stopCondition":{"kind":"never"},"#
+                + #""modifiers":"shift"},"#
+                + #""toggleHotkey":{"keyCode":97,"modifiers":0}}"#)
         #expect(SettingsStore(defaults: defaults).load() == .default)
     }
 
@@ -206,7 +308,7 @@ final class SettingsStoreTests {
     ])
     func invalidStoredShortcutFallsBackToF6AndKeepsTheConfiguration(hotkeyJSON: String) throws {
         let configuration = try Self.json(of: Self.customConfiguration)
-        store(json: #"{"version":2,"configuration":"# + configuration + #","toggleHotkey":"# + hotkeyJSON + "}")
+        store(json: #"{"version":3,"configuration":"# + configuration + #","toggleHotkey":"# + hotkeyJSON + "}")
         #expect(SettingsStore(defaults: defaults).load() == AppSettings(configuration: Self.customConfiguration))
     }
 
@@ -222,14 +324,16 @@ final class SettingsStoreTests {
 
     // MARK: - Format
 
-    @Test func savesAVersionTwoJSONEnvelope() throws {
+    @Test func savesAVersionThreeJSONEnvelope() throws {
         SettingsStore(defaults: defaults).save(Self.customSettings)
         let envelope = try storedEnvelope()
-        #expect(envelope["version"] as? Int == 2)
-        #expect(SettingsStore.currentVersion == 2)
+        #expect(envelope["version"] as? Int == 3)
+        #expect(SettingsStore.currentVersion == 3)
         #expect(Set(envelope.keys) == ["version", "configuration", "toggleHotkey"])
         let configuration = try #require(envelope["configuration"] as? [String: Any])
         #expect(configuration["clickType"] as? String == "double")
+        // Menu order (⌃⌥⇧⌘), whatever order the set was built in.
+        #expect(configuration["modifiers"] as? [String] == ["shift", "command"])
         let hotkey = try #require(envelope["toggleHotkey"] as? [String: Any])
         #expect(hotkey["keyCode"] as? Int == kVK_ANSI_K)
         #expect(hotkey["modifiers"] as? Int == controlKey | optionKey)

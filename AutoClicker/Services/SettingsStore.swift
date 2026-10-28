@@ -1,15 +1,17 @@
 import Foundation
 import os
 
-/// Loads and saves the user's `AppSettings` in `UserDefaults` as versioned JSON (ADR-007, ADR-008).
+/// Loads and saves the user's `AppSettings` in `UserDefaults` as versioned JSON (ADR-007, ADR-008, ADR-009).
 ///
 /// The value is stored as `Data` under one key, wrapped in an envelope:
-/// `{"version": 2, "configuration": {...}, "toggleHotkey": {...}}`. The version lets a later build migrate or reject
+/// `{"version": 3, "configuration": {...}, "toggleHotkey": {...}}`. The version lets a later build migrate or reject
 /// settings written by another build instead of misreading them.
 ///
 /// ## Versions
 /// - 1: `{"version": 1, "configuration": {...}}`. Loaded with F6 as the start/stop shortcut.
-/// - 2: adds `toggleHotkey`, the user-configurable start/stop shortcut. Written by this build.
+/// - 2: adds `toggleHotkey`, the user-configurable start/stop shortcut.
+/// - 3: adds `configuration.modifiers`, the modifier keys held for every click. Written by this build. Versions 1 and
+///   2 load with no modifiers.
 ///
 /// ## Concurrency
 /// The class is `@MainActor` rather than `Sendable`. `UserDefaults` is documented as thread-safe, but the SDK does
@@ -21,7 +23,7 @@ import os
 @MainActor
 final class SettingsStore {
     /// The schema version written by `save(_:)`.
-    nonisolated static let currentVersion = 2
+    nonisolated static let currentVersion = 3
 
     private let defaults: UserDefaults
     private let key: String
@@ -40,7 +42,8 @@ final class SettingsStore {
 
     /// Returns the saved settings, or `.default` when nothing usable is stored.
     ///
-    /// Version 1 settings keep their configuration and get F6 as the start/stop shortcut. A missing value, corrupt
+    /// Version 1 settings keep their configuration and get F6 as the start/stop shortcut. Versions 1 and 2 load with
+    /// no modifiers, since plain clicks were all they could post. A missing value, corrupt
     /// data, a malformed body or a version this build does not know all fall back to `.default`. A well-formed
     /// shortcut that `ShortcutValidator` rejects is replaced by F6. Settings are never worth crashing over, and the
     /// next `save(_:)` overwrites the bad value.
@@ -63,10 +66,15 @@ final class SettingsStore {
                 let envelope = try decoder.decode(Envelope.self, from: data)
                 return AppSettings(
                     configuration: envelope.configuration, toggleHotkey: validated(envelope.toggleHotkey))
+            case 2:
+                // Version 2 predates modifier clicks.
+                let envelope = try decoder.decode(EnvelopeV2.self, from: data)
+                return AppSettings(
+                    configuration: envelope.configuration.migrated, toggleHotkey: validated(envelope.toggleHotkey))
             case 1:
-                // Version 1 predates the configurable shortcut, when the start/stop hotkey was always F6.
+                // Version 1 also predates the configurable shortcut, when the start/stop hotkey was always F6.
                 let envelope = try decoder.decode(EnvelopeV1.self, from: data)
-                return AppSettings(configuration: envelope.configuration, toggleHotkey: .f6)
+                return AppSettings(configuration: envelope.configuration.migrated, toggleHotkey: .f6)
             default:
                 logger.error("Ignoring settings with unknown version \(header.version, privacy: .public)")
                 return .default
@@ -106,16 +114,40 @@ final class SettingsStore {
         let version: Int
     }
 
-    /// The stored shape of the current schema version (2).
+    /// The stored shape of the current schema version (3).
     private struct Envelope: Codable {
         let version: Int
         let configuration: ClickConfiguration
         let toggleHotkey: Hotkey
     }
 
+    /// The stored shape of version 2, kept only to migrate it.
+    private struct EnvelopeV2: Decodable {
+        let version: Int
+        let configuration: ConfigurationV2
+        let toggleHotkey: Hotkey
+    }
+
     /// The stored shape of version 1, kept only to migrate it.
     private struct EnvelopeV1: Decodable {
         let version: Int
-        let configuration: ClickConfiguration
+        let configuration: ConfigurationV2
+    }
+
+    /// The click configuration as versions 1 and 2 stored it: everything but `modifiers`.
+    ///
+    /// Decoded separately because `ClickConfiguration` requires every current key; that keeps a version 3 envelope
+    /// without modifiers malformed instead of silently guessed at.
+    private struct ConfigurationV2: Decodable {
+        let clickType: ClickType
+        let interval: ClickInterval
+        let target: ClickTarget
+        let stopCondition: StopCondition
+
+        /// The same configuration with no modifiers held.
+        var migrated: ClickConfiguration {
+            ClickConfiguration(
+                clickType: clickType, interval: interval, target: target, stopCondition: stopCondition, modifiers: [])
+        }
     }
 }
