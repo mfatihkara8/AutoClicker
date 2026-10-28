@@ -61,6 +61,7 @@ AutoClicker/                      Xcode project root
 │   │   │   ├── ClickScheduler.swift
 │   │   │   ├── ClickConfiguration.swift
 │   │   │   ├── ClickType.swift
+│   │   │   ├── ClickModifiers.swift    option set ⇧ ⌃ ⌥ ⌘, stored as names
 │   │   │   ├── StopCondition.swift
 │   │   │   ├── StopReason.swift
 │   │   │   └── ClickCounter.swift
@@ -113,7 +114,8 @@ AutoClicker/                      Xcode project root
 | `ClickTarget` | `enum` | `.currentCursor` or `.fixed(CGPoint)`. The point is in CG global space. |
 | `ClickInterval` | `struct` | Hours, minutes, seconds and milliseconds. Converts to `Duration` and clamps to ≥ 1 ms. Has an optional jitter in ms, capped at `(duration − 1 ms) / 2` so consecutive deadlines stay ≥ 1 ms apart; the scheduler adds `jitterOffset()` to each absolute deadline and never accumulates it. |
 | `StopCondition` | `enum` | `.never`, `.afterClicks(Int)` or `.afterDuration(Duration)`. Exposes `isSatisfied(clicks:elapsed:)`. |
-| `ClickConfiguration` | `struct`, `Sendable`, `Codable` | Aggregates the click type, interval, target and stop condition. It is the persisted settings value. |
+| `ClickModifiers` | `OptionSet`, `Sendable`, `Codable` | Shift, Control, Option, Command held for every click. Encoded as an array of names in ⌃⌥⇧⌘ order. |
+| `ClickConfiguration` | `struct`, `Sendable`, `Codable` | Aggregates the click type, modifiers, interval, target and stop condition. It is the persisted settings value. |
 | `ClickCounter` | `final class`, `Sendable` | Wraps `OSAllocatedUnfairLock<Int>` and provides `increment()`, `value` and `reset()`. |
 | `ClickScheduler` | `final class` | Drives the click loop on a serial queue using `DispatchSourceTimer`. Computes the absolute deadline `start + n × interval`, plus jitter. |
 | `ClickEngine` | `final class` | Owns the scheduler and coordinates each tick (see below). Takes `start(_:)` and `stop()`. Reports the end of a run through `onStop(StopReason)`. |
@@ -132,8 +134,8 @@ The first tick fires one interval after `start`. `onStop(StopReason)` is called 
 
 | Type | Responsibility |
 |---|---|
-| `EventPosting` | `func post(_ type: ClickType, at point: CGPoint)` |
-| `CGEventPoster` | Implements `EventPosting`. Posts mouse-down/up events through a `.hidSystemState` source to `.cghidEventTap`:<br>• Middle click uses `.otherMouseDown/Up` with `.center`.<br>• Double click sets `kCGMouseEventClickState` to 2 on the second pair. |
+| `EventPosting` | `func post(_ type: ClickType, at point: CGPoint, modifiers: ClickModifiers)` |
+| `CGEventPoster` | Implements `EventPosting`. Posts mouse-down/up events through a `.hidSystemState` source to `.cghidEventTap`:<br>• Middle click uses `.otherMouseDown/Up` with `.center`.<br>• Double click sets `kCGMouseEventClickState` to 2 on the second pair.<br>• Every event's `flags` are set to exactly the configured modifiers (empty for a plain click), so held keys never leak in (ADR-009). |
 | `Hotkey` | `Hashable`, `Sendable` value: Carbon key code and modifiers. Provides `.f6` and `.escape`. |
 | `HotkeyProviding` | `@MainActor`. `register(_ hotkey:, handler:) throws` (re-registering replaces the handler), `unregister(_:)`, `unregisterAll()` and `isRegistered(_:)`. Failures throw `HotkeyRegistrationError`. |
 | `CarbonHotkeyManager` | Implements `HotkeyProviding` with `RegisterEventHotKey`:<br>• The handler context is passed via `userData`.<br>• The Carbon event handler is installed lazily on the first registration.<br>• All hotkeys are unregistered in an `isolated deinit`. |
@@ -143,7 +145,7 @@ The first tick fires one interval after `start`. `onStop(StopReason)` is called 
 | `FailsafeChecking` | `evaluate(cursor:target:) -> FailsafeDecision` (`.proceed`, `.skipInsideOwnWindow`, `.stopCornerReached`). The engine depends only on this protocol. |
 | `FailsafeMonitor` | Implements `FailsafeChecking`, `Sendable` via a lock; the main actor pushes snapshots with `update(geometry:)` / `update(ownWindowFrames:)`, and `ownWindowFrames(geometry:)` snapshots visible, non-minimized windows. Does two checks:<br>• `shouldStop(cursor:)` returns true when the cursor is within 2 px of a screen corner.<br>• `isInsideOwnWindow(_ point:)` checks the point against window frames snapshotted on the main actor. |
 | `ScreenGeometry` | `Sendable` snapshot of the screen frames (`current()` reads `NSScreen` on the main actor). The only place that converts between AppKit and CG coordinates. Provides the screen corners, `isNearCorner(_:tolerance:)`, and the current cursor position via `CGEvent(source: nil)?.location` (optional; `nil` when unavailable). |
-| `SettingsStore` | `@MainActor`. Loads and saves `AppSettings` (`configuration` + `toggleHotkey`) as a `{"version": 2, "configuration": …, "toggleHotkey": …}` JSON envelope in an injected `UserDefaults`. Version 1 migrates with F6. Missing, corrupt or unknown-version data loads the defaults; a stored shortcut the validator rejects falls back to F6. Debouncing is the ViewModel's job. |
+| `SettingsStore` | `@MainActor`. Loads and saves `AppSettings` (`configuration` + `toggleHotkey`) as a `{"version": 3, "configuration": …, "toggleHotkey": …}` JSON envelope in an injected `UserDefaults`. Versions 1 and 2 migrate (F6 for v1, no modifiers for both). Missing, corrupt or unknown-version data loads the defaults; a stored shortcut the validator rejects falls back to F6. Debouncing is the ViewModel's job. |
 | `ShortcutValidator` | Pure ADR-008 rules: F1–F20 alone, otherwise ⌘/⌥/⌃ required; Shift-only, modifier-only and Esc rejected. |
 | `LocalShortcutRecorder` | Implements `ShortcutRecording` with an `NSEvent` local monitor installed only between `begin` and the captured key or `cancel`; swallows the captured event. While recording, the ViewModel unregisters the current start/stop hotkey so it can be captured, and restores it afterwards. |
 

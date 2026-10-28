@@ -5,11 +5,11 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** M8, Modifier clicks (before M6)
+**Current milestone:** UI redesign from the user's drawing, then M6
 
 ## Now
-Worktree agent:
-- [ ] T-801 → T-802 → T-803: modifier clicks (⇧ ⌃ ⌥ ⌘ held while clicking)
+- [ ] UI redesign: follow the drawing the user is sending
+- [ ] Manual: ⌘-click a link opens a new tab, ⇧⌘-click multi-selects in Finder, modifiers survive a relaunch
 - [ ] SC-7 (fixed target on a secondary monitor), only if a second display is available
 
 ## Next
@@ -17,6 +17,9 @@ Worktree agent:
 - M6: Hardening and release (T-601 to T-604)
 
 ## Done
+- [x] T-803: "Hold" row (⇧ ⌃ ⌥ ⌘) with the ⌃-click hint; menu bar names the modified click
+- [x] T-802: modifier flags set on every mouse event, never key events (ADR-009)
+- [x] T-801: `ClickModifiers` and settings schema v3 (v1/v2 migrate with no modifiers)
 - [x] Dock icon bug (2026-10-28): the build was fine; LaunchServices had 15 stale registrations of the bundle ID (old Xcode DerivedData template builds, deleted agent worktrees). Fixed by unregistering them with `lsregister -u`, re-registering the current build and restarting the Dock.
 - [x] T-703: configurable shortcut wired into the ViewModel, shortcut card and menu bar
 - [x] T-702: `ShortcutValidator`, `ShortcutRecording`, `LocalShortcutRecorder`

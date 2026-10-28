@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Modifier clicks: hold any combination of ⇧ Shift, ⌃ Control, ⌥ Option and ⌘ Command for every click (for example ⌘-click to open links in new tabs). Set as event flags, so a key can never get stuck. The menu bar shows the modified click while running.
 - Configurable start/stop shortcut: Change… records a new key combination (F1–F20 alone, or with ⌘/⌥/⌃), Reset goes back to F6, Esc cancels. The shortcut is saved and shown in the window and the menu bar; a shortcut that cannot be registered keeps the previous one with a warning.
 - App icon with light, dark and tinted appearances on macOS 26 and later (light icon on macOS 14 and 15), and a matching blue accent color.
 - Accessibility permission detection: a banner with "Open System Settings" and "Request Access" buttons, shown while permission is missing and hidden automatically about 1 s after it is granted.
