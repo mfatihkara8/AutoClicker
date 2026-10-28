@@ -5,20 +5,21 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** M9, Tabbed window (before M6)
+**Current milestone:** M9 visual check, then M6
 
 ## Now
-- [ ] T-901: tab shell, toolbar Start/Stop, menu commands
-- [ ] T-902: Main and About tabs, bug report form
-- [ ] T-903: Click and Shortcuts tabs
+- [ ] Manual: look at all four tabs (light and dark), no scrolling; About/⌘,/Report a Bug… menus; sidebar toggle
 - [ ] Manual: ⌘-click a link opens a new tab, ⇧⌘-click multi-selects in Finder, modifiers survive a relaunch
 - [ ] SC-7 (fixed target on a secondary monitor), only if a second display is available
 
 ## Next
 - **Manual check pending (user will do it later):** configurable shortcut — change to ⌃⌥K, use it from another app, ⇧K is rejected, it persists after relaunch, Reset returns to F6.
-- M6: Hardening and release (T-601 to T-604)
+- M6: Hardening and release (T-601 to T-604). Also set `MARKETING_VERSION` to 0.1.0 (About currently shows the template's 1.0).
 
 ## Done
+- [x] T-903: Click tab (two grouped Forms, 760×520) and Shortcuts tab; old card views removed
+- [x] T-902: Main tab (seven items, settings summary) and About tab with Report a Bug… and the GitHub issue form
+- [x] T-901: native TabView shell (Main, Click, Shortcuts, About), toolbar Start/Stop and banner on every tab, menu commands
 - [x] T-803: "Hold" row (⇧ ⌃ ⌥ ⌘) with the ⌃-click hint; menu bar names the modified click
 - [x] T-802: modifier flags set on every mouse event, never key events (ADR-009)
 - [x] T-801: `ClickModifiers` and settings schema v3 (v1/v2 migrate with no modifiers)

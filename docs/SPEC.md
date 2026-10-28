@@ -109,7 +109,7 @@ Implements the flow in section 2. It is `@Observable` and `@MainActor`.
   - One main window with four tabs: **Main**, **Click**, **Shortcuts** and **About**. It always opens on Main; the last tab is not remembered.
   - Tabs use the native SwiftUI `TabView`, centered at the top of the window, with no custom styling. On macOS 26 and later this is the system's Liquid Glass tab bar.
   - The user can switch the tabs to a sidebar with the system's own toolbar control (`sidebarAdaptable`, macOS 15 and later). That choice is remembered. On macOS 14 the tabs stay at the top with the standard look.
-  - Every tab fits the default window size (about 560×520) without scrolling. The window can grow but cannot shrink below that size. If the Click tab does not fit, the window gets wider and that tab uses two columns, rather than scrolling.
+  - Every tab fits the default window size (760×520) without scrolling. The window can grow but cannot shrink below that size. The Click tab uses two columns (Click and Interval on the left, Target and Stop on the right), because one column at 560 wide was too tall.
 - **On every tab:** a compact Start/Stop button with a status dot at the trailing end of the toolbar, and the Accessibility permission banner at the top while permission is missing.
 - **Main tab**, top to bottom:
   1. Active/Inactive status.
