@@ -10,13 +10,17 @@ struct MenuBarPresentationTests {
         isRunning: Bool,
         totalClicks: Int = 0,
         lastStopReason: StopReason? = nil,
-        toggleHotkeyName: String? = "F6"
+        toggleHotkeyName: String? = "F6",
+        clickType: ClickType = .left,
+        modifiers: ClickModifiers = []
     ) -> MenuBarPresentation {
         MenuBarPresentation(
             isRunning: isRunning,
             totalClicks: totalClicks,
             lastStopReason: lastStopReason,
             toggleHotkeyName: toggleHotkeyName,
+            clickType: clickType,
+            modifiers: modifiers,
             locale: Self.locale
         )
     }
@@ -48,6 +52,51 @@ struct MenuBarPresentationTests {
     @Test func runningStatusIgnoresAStaleStopReason() {
         let text = presentation(isRunning: true, totalClicks: 3, lastStopReason: .user).statusText
         #expect(text == "Clicking: 3 clicks")
+    }
+
+    // MARK: - Modifiers in the status line
+
+    @Test func modifiedClickNameIsNilWithoutModifiers() {
+        for type in ClickType.allCases {
+            #expect(MenuBarPresentation.modifiedClickName(clickType: type, modifiers: []) == nil)
+        }
+    }
+
+    @Test(arguments: [
+        ModifiedClickCase(.left, .shift, "⇧-Left click"),
+        ModifiedClickCase(.right, .control, "⌃-Right click"),
+        ModifiedClickCase(.middle, .option, "⌥-Middle click"),
+        ModifiedClickCase(.double, .command, "⌘-Double click"),
+        ModifiedClickCase(.double, [.command, .shift], "⇧⌘-Double click"),
+        ModifiedClickCase(.left, [.command, .shift, .option, .control], "⌃⌥⇧⌘-Left click"),
+    ])
+    func modifiedClickNameListsTheGlyphsInMenuOrder(testCase: ModifiedClickCase) {
+        #expect(
+            MenuBarPresentation.modifiedClickName(clickType: testCase.clickType, modifiers: testCase.modifiers)
+                == testCase.expected)
+    }
+
+    @Test func runningStatusNamesTheModifiedClick() {
+        let text = presentation(isRunning: true, totalClicks: 1234, modifiers: .shift).statusText
+        #expect(text == "Clicking: 1,234 clicks (⇧-Left click)")
+    }
+
+    @Test func runningStatusNamesTheModifiedClickForOneClick() {
+        let text = presentation(isRunning: true, totalClicks: 1, clickType: .double, modifiers: [.shift, .command])
+            .statusText
+        #expect(text == "Clicking: 1 click (⇧⌘-Double click)")
+    }
+
+    @Test(arguments: ClickType.allCases)
+    func runningStatusWithoutModifiersOmitsTheClick(clickType: ClickType) {
+        #expect(presentation(isRunning: true, totalClicks: 5, clickType: clickType).statusText == "Clicking: 5 clicks")
+    }
+
+    @Test func idleStatusIgnoresTheModifiers() {
+        #expect(presentation(isRunning: false, modifiers: .command).statusText == "Idle")
+        #expect(
+            presentation(isRunning: false, lastStopReason: .user, modifiers: .command).statusText
+                == "Idle — \(StopReason.user.displayText)")
     }
 
     // MARK: - Start/Stop item
@@ -83,4 +132,19 @@ struct MenuBarPresentationTests {
         #expect(MenuBarPresentation.accessibilityLabel(isRunning: false) == "AutoClicker, idle")
         #expect(MenuBarPresentation.accessibilityLabel(isRunning: true) == "AutoClicker, clicking")
     }
+}
+
+/// One `modifiedClickName` case; a named type because `@Test` cannot infer tuple arguments with option set literals.
+struct ModifiedClickCase: Sendable, CustomTestStringConvertible {
+    let clickType: ClickType
+    let modifiers: ClickModifiers
+    let expected: String
+
+    init(_ clickType: ClickType, _ modifiers: ClickModifiers, _ expected: String) {
+        self.clickType = clickType
+        self.modifiers = modifiers
+        self.expected = expected
+    }
+
+    var testDescription: String { expected }
 }

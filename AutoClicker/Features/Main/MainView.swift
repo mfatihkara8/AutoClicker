@@ -75,7 +75,8 @@ struct MainView: View {
 
     private var settingsCards: some View {
         VStack(spacing: 12) {
-            ClickTypeCard(clickType: $viewModel.configuration.clickType)
+            ClickTypeCard(
+                clickType: $viewModel.configuration.clickType, modifiers: $viewModel.configuration.modifiers)
             IntervalCard(interval: $viewModel.configuration.interval)
             TargetCard(
                 target: $viewModel.configuration.target,
