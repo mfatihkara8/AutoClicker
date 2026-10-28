@@ -60,6 +60,12 @@ Implements the flow in section 2. It is `@Observable` and `@MainActor`.
 
 **Event posting:** events are created with `CGEventSource(stateID: .hidSystemState)` and posted to `.cghidEventTap`.
 
+**Modifier keys** ([ADR-009](DECISIONS.md#adr-009-modifier-clicks-via-event-flags-only)):
+- The user can hold any combination of ⇧ Shift, ⌃ Control, ⌥ Option and ⌘ Command for every click, with every click type (for example ⇧⌘-click). The default is none.
+- The modifiers are set as flags on each posted mouse event. No separate key-down/key-up events are posted, so a modifier can never get stuck.
+- The click type card has a "Hold" row with one toggle per modifier, locked while clicking like the other settings. Choosing ⌃ with a left or double click shows the hint "⌃-click opens the context menu in most apps." The menu bar status names the modifiers (for example "⇧-Left click").
+- The modifiers are persisted with the click configuration (settings schema version 3; older data migrates with no modifiers).
+
 **Interval:**
 - Entered as hours, minutes, seconds and milliseconds.
 - Minimum 1 ms.

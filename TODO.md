@@ -5,14 +5,14 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** M7 manual check, then M6
+**Current milestone:** M8, Modifier clicks (before M6)
 
 ## Now
-Parallel worktree agents:
+Worktree agent:
+- [ ] T-801 → T-802 → T-803: modifier clicks (⇧ ⌃ ⌥ ⌘ held while clicking)
 - [ ] SC-7 (fixed target on a secondary monitor), only if a second display is available
 
 ## Next
-- **Feature: modifier + click.** Let the user hold Shift, Control, Option and/or Command while clicking (e.g. ⇧-click, ⌃-click). Needs a SPEC update, a `ClickConfiguration` field (settings schema v3 with migration), event flags in `CGEventPoster` and a control in the click type card.
 - **Manual check pending (user will do it later):** configurable shortcut — change to ⌃⌥K, use it from another app, ⇧K is rejected, it persists after relaunch, Reset returns to F6.
 - M6: Hardening and release (T-601 to T-604)
 

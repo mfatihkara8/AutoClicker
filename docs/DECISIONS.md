@@ -100,3 +100,13 @@ Never edit a past decision. To change one, add a new ADR that supersedes it and 
   - Still no Input Monitoring permission, and no key monitoring outside of an explicit recording session.
   - Global monitors and event taps remain forbidden.
 
+## ADR-009: Modifier clicks via event flags only
+**Status:** Accepted
+
+- **Context:** users want to click while Shift, Control, Option and/or Command are held (multi-select, open in new tab, context menus). There are two ways to do that: set `CGEventFlags` on the posted mouse events, or post real modifier key-down/key-up events around each click.
+- **Decision:** set the flags on each mouse-down/up event only (`maskShift`, `maskControl`, `maskAlternate`, `maskCommand`). Never post modifier key events.
+- **Consequences:**
+  - A modifier can never be left stuck down, even if the app crashes mid-click.
+  - Standard AppKit apps (Finder, browsers, editors) read the flags from the mouse event and behave as expected.
+  - Apps that poll the real keyboard state, such as some games, may not see the modifier. Supporting them would need key events and a new ADR.
+

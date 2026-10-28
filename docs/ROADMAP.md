@@ -77,6 +77,12 @@ M7 was added after M5 and is done **before** M6, so that 0.1.0 ships with it.
   - A changed shortcut works globally, survives a relaunch, and a taken shortcut keeps the old one with a warning.
   - The app shows its own icon in the Dock, Finder and the app switcher.
 
+### M8: Modifier clicks
+Added after M7 and done **before** M6, so that 0.1.0 ships with it.
+- **Goal:** clicks can be sent with ⇧, ⌃, ⌥ and/or ⌘ held.
+- **Deliverables:** `ClickModifiers` in `ClickConfiguration` (settings schema v3), event flags in `CGEventPoster` ([ADR-009](DECISIONS.md#adr-009-modifier-clicks-via-event-flags-only)), and the "Hold" row in the click type card.
+- **Done when:** ⇧⌘-click selects several files in Finder, ⌘-click opens a link in a new browser tab, and the modifiers survive a relaunch.
+
 ## Phase 2: Productivity (planned)
 - Profiles: saved and named configurations.
 - Multi-point and sequential clicking with a per-point delay.

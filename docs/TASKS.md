@@ -164,6 +164,26 @@ M7 is done before M6 (see [ROADMAP.md](ROADMAP.md)).
     - `AccentColor` matches the icon.
     - The icon shows in the Dock, Finder and the app switcher.
 
+## M8: Modifier clicks
+
+M8 is done before M6 (see [ROADMAP.md](ROADMAP.md)).
+
+- **T-801: Add `ClickModifiers` and settings schema v3**
+  - **Files:** `Core/Engine/ClickModifiers.swift`, `ClickConfiguration`, `Services/SettingsStore.swift`
+  - **Done when:**
+    - `ClickModifiers` is a `Sendable`, `Codable` option set of shift, control, option and command, with a stable, readable JSON form.
+    - `ClickConfiguration` has `modifiers` (default none), and settings schema version 3 stores it. Versions 1 and 2 migrate with no modifiers, and the migrations are unit-tested.
+- **T-802: Post modifier flags**
+  - **Files:** `EventPosting`, `CGEventPoster`, `ClickEngine`, `MockEventPoster`
+  - **Done when:**
+    - Every mouse-down/up event of every click type carries exactly the configured `CGEventFlags`, and no key events are posted (ADR-009). The pure event builder is unit-tested for each modifier and combination.
+    - The engine passes the run's modifiers on every click, checked with `MockEventPoster`.
+- **T-803: Add the "Hold" row and show the modifiers**
+  - **Files:** `ClickTypeCard` (or a new component), `MenuBarPresentation`
+  - **Done when:**
+    - Four toggles (⇧ ⌃ ⌥ ⌘) edit `configuration.modifiers` and are locked while clicking. ⌃ with a left or double click shows the context-menu hint.
+    - The menu bar status names the modifiers (for example "⇧-Left click"), and that text is unit-tested.
+
 ## M6: Hardening and release
 
 - **T-601: Profile with Instruments**
