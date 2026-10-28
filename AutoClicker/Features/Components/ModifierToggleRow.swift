@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// The "Hold" row: one button-style toggle per modifier (⌃ ⌥ ⇧ ⌘) held for every click, plus the ⌃-click hint.
+/// The "Hold" form row: one button-style toggle per modifier (⌃ ⌥ ⇧ ⌘) held for every click, with the ⌃-click hint
+/// as the row's subtitle when it applies.
 ///
 /// Locked while clicking through the parent's `.disabled`, like every other setting.
 struct ModifierToggleRow: View {
@@ -9,28 +10,24 @@ struct ModifierToggleRow: View {
     let clickType: ClickType
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text("Hold")
-                ControlGroup {
-                    ForEach(ClickModifiers.menuOrder, id: \.rawValue) { modifier in
-                        Toggle(isOn: binding(for: modifier)) {
-                            Text(verbatim: modifier.symbol)
-                        }
-                        .toggleStyle(.button)
-                        .accessibilityLabel(Text(modifier.displayName))
-                        // The raw bit, not the localized name, so UI tests stay stable in every language.
-                        .accessibilityIdentifier("modifierToggle.\(modifier.rawValue)")
+        LabeledContent {
+            ControlGroup {
+                ForEach(ClickModifiers.menuOrder, id: \.rawValue) { modifier in
+                    Toggle(isOn: binding(for: modifier)) {
+                        Text(verbatim: modifier.symbol)
                     }
+                    .toggleStyle(.button)
+                    .accessibilityLabel(Text(modifier.displayName))
+                    // The raw bit, not the localized name, so UI tests stay stable in every language.
+                    .accessibilityIdentifier("modifierToggle.\(modifier.rawValue)")
                 }
-                .fixedSize()
-                Spacer(minLength: 0)
             }
-
+            .fixedSize()
+        } label: {
+            Text("Hold")
+            // A subtitle rather than its own row, so the hint does not push the Click tab into scrolling.
             if modifiers.showsContextMenuHint(for: clickType) {
-                Text("⌃-click opens the context menu in most apps.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                Text("⌃-click opens context menus.")
             }
         }
     }
@@ -50,7 +47,9 @@ struct ModifierToggleRow: View {
 
 #Preview {
     @Previewable @State var modifiers: ClickModifiers = [.control]
-    ModifierToggleRow(modifiers: $modifiers, clickType: .left)
-        .padding()
-        .frame(width: 480)
+    Form {
+        ModifierToggleRow(modifiers: $modifiers, clickType: .left)
+    }
+    .formStyle(.grouped)
+    .frame(width: 480)
 }
