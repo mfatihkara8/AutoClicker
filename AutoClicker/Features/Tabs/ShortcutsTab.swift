@@ -49,6 +49,7 @@ struct ShortcutsTab: View {
             }
         }
         .formStyle(.grouped)
+        .hidingTopScrollEdgeEffect()
         // The recorder sees every key sent to this window, so a recording must not outlive the tab that shows it.
         .onDisappear(perform: viewModel.cancelRecordingShortcut)
     }
