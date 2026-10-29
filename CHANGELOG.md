@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- Tabbed main window with Main, Click, Shortcuts and About tabs, using the native macOS tab bar (Liquid Glass on macOS 26, optional sidebar on macOS 15 and later). A compact Start/Stop is in the toolbar on every tab, nothing scrolls at the default size, and the Click and Shortcuts tabs use the System Settings grouped style.
+- Tabbed main window with Main, Click, Shortcuts and About tabs, using the native macOS tab bar (Liquid Glass on macOS 26). One toolbar button switches the tabs to a sidebar and back (macOS 15 and later), and the choice is remembered. Every tab's toolbar has an Idle/Active status dot and a round ▶︎/■ Start/Stop button, nothing scrolls at the default size, and the Click and Shortcuts tabs use the System Settings grouped style.
 - About tab and Help menu with Report a Bug…, which opens a GitHub issue form prefilled with the app and macOS versions. About AutoClicker and Settings… (⌘,) open the matching tabs.
 - Modifier clicks: hold any combination of ⇧ Shift, ⌃ Control, ⌥ Option and ⌘ Command for every click (for example ⌘-click to open links in new tabs). Set as event flags, so a key can never get stuck. The menu bar shows the modified click while running.
 - Configurable start/stop shortcut: Change… records a new key combination (F1–F20 alone, or with ⌘/⌥/⌃), Reset goes back to F6, Esc cancels. The shortcut is saved and shown in the window and the menu bar; a shortcut that cannot be registered keeps the previous one with a warning.

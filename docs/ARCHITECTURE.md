@@ -44,7 +44,8 @@ AutoClicker/                      Xcode project root
 │   │   └── AppDelegate.swift           keeps the app alive when the main window closes
 │   ├── Features/
 │   │   ├── Main/
-│   │   │   ├── MainView.swift          native TabView shell (sidebarAdaptable on 15+), banner + toolbar Start/Stop per tab
+│   │   │   ├── MainView.swift          top mode: TabView(.tabBarOnly); sidebar mode: NavigationSplitView (15+); banner + toolbar per tab
+│   │   │   ├── ToolbarRunPresentation.swift toolbar status/tooltip text (tested)
 │   │   │   ├── AppTab.swift            .main/.click/.shortcuts/.about
 │   │   │   ├── WindowNavigation.swift  @Observable selected tab (not persisted; resets to Main)
 │   │   │   ├── AppCommands.swift       About → About tab, ⌘, → Shortcuts tab, Help → Report a Bug…
@@ -53,7 +54,7 @@ AutoClicker/                      Xcode project root
 │   │   ├── Tabs/                       MainTab, ClickTab (two grouped Forms), ShortcutsTab, AboutTab;
 │   │   │                               SettingsSummary, AppInfo, BugReportLink (pure, tested);
 │   │   │                               WindowMetrics (default/min content size 760×520)
-│   │   ├── Components/                 PermissionBanner, StartStopButton, ClickTypeSection,
+│   │   ├── Components/                 PermissionBanner, StartStopButton (large + round icon), RunStatusIndicator, ClickTypeSection,
 │   │   │                               IntervalSection, TargetSection, StopConditionSection,
 │   │   │                               ModifierToggleRow, KeyCap, NumberField, WarningLabel; pure clamping
 │   │   │                               editors (ClickIntervalEditor, ClickTargetEditor, StopConditionEditor)
