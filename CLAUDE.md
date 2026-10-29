@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This is a native macOS AutoClicker built with Swift 6, SwiftUI and `@Observable`, targeting macOS 14+. The Xcode project exists (created with Xcode 27) and still contains only the template app. Check `TODO.md` for the current task.
+This is a native macOS AutoClicker built with Swift 6, SwiftUI and `@Observable`, targeting macOS 14+. The Xcode project was created with Xcode 27; Phase 1 (M1–M5, M7–M9) is implemented. Check `TODO.md` for the current task.
 
 ## Commands
 
@@ -14,6 +14,9 @@ xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'plat
 
 # Unit tests (Swift Testing)
 xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'platform=macOS' -derivedDataPath build/DerivedData -only-testing:AutoClickerTests test
+
+# Signed Release build + DMG in build/Release (--profiling keeps get-task-allow for leaks/Instruments, no DMG)
+scripts/build-release.sh
 
 # Format and lint (config: .swift-format, 4 spaces, 120 columns); lint must be clean before committing
 swift format -i -r AutoClicker AutoClickerTests AutoClickerUITests

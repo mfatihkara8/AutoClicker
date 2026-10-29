@@ -100,10 +100,12 @@ AutoClicker/                      Xcode project root
 │                                       sandbox/hardened runtime are build settings
 ├── .github/ISSUE_TEMPLATE/bug_report.yml  issue form prefilled by BugReportLink (app-version, macos-version)
 ├── scripts/
-│   └── generate-app-icon.swift         regenerates AppIcon.icon (run: swift scripts/generate-app-icon.swift)
+│   ├── build-release.sh                signed Release build + DMG (--profiling: keeps get-task-allow, no DMG)
+│   ├── generate-app-icon.swift         regenerates AppIcon.icon (run: swift scripts/generate-app-icon.swift)
+│   └── measure-performance.sh          samples a running app's CPU/RSS each second, then runs leaks (SC-6, SC-11)
 ├── AutoClickerTests/                  Swift Testing
 │   ├── Mocks/                          MockEventPoster, MockPermissionChecker, MockHotkeyProvider, MockFailsafe, MockShortcutRecorder
-│   ├── Support/                        test helpers (CallRecorder, waitUntil, drain)
+│   ├── Support/                        test helpers (CallRecorder, waitUntil, drain, TestDefaultsSuite)
 │   ├── ClickEngineTests.swift
 │   ├── ClickSchedulerTests.swift
 │   ├── StopConditionTests.swift

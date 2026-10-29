@@ -24,8 +24,8 @@ These are settled. Changing one requires a new ADR in [DECISIONS.md](DECISIONS.m
   - If the permission gets stuck, reset it with `tccutil reset Accessibility <bundle-id>`.
 - **UI:**
   - Modern macOS look in a compact single window.
-  - Settings are laid out as cards, with no tabs.
-  - An optional `MenuBarExtra`.
+  - Settings are grouped into tabs (see §3.5).
+  - A `MenuBarExtra`.
 
 ## 2. Permissions
 

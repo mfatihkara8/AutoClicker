@@ -13,7 +13,7 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 
 ## Next
 - **Manual check pending (user will do it later):** configurable shortcut — change to ⌃⌥K, use it from another app, ⇧K is rejected, it persists after relaunch, Reset returns to F6.
-- M6: Hardening and release (T-601 to T-604). Also set `MARKETING_VERSION` to 0.1.0 (About currently shows the template's 1.0).
+- M6: Hardening and release (T-601 to T-604).
 
 ## Done
 - [x] Test preference leak (2026-10-29): test suites now live at an absolute path in a temporary folder (`TestDefaultsSuite`), so nothing lands in `~/Library/Preferences`; the 2,321 leaked files went to the Trash

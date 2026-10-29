@@ -213,7 +213,7 @@ M9 is done before M6 (see [ROADMAP.md](ROADMAP.md)).
 - **T-602: Pass over all success criteria**
   - **Done when:** SC-1 to SC-11 are each checked, with their results recorded.
 - **T-603: Document the Release build and notarization**
-  - **Files:** `README.md`
+  - **Files:** `README.md`, `scripts/build-release.sh`
   - **Done when:** the steps for Developer ID signing, notarization and stapling are documented.
 - **T-604: Tag 0.1.0**
   - **Files:** `CHANGELOG.md`
