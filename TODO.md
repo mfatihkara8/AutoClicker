@@ -13,6 +13,8 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - [ ] SC-7 (fixed target on a secondary monitor), only if a second display is available
 
 ## Next
+- **Bug: unit tests leak preference files.** Every test suite removes its `UserDefaults` domain, but the `.plist` file stays in `~/Library/Preferences` (2,240 `AutoClickerTests.*` / `MainViewModelTests.*` files as of 2026-10-29). Fix the test helpers so the file is deleted too, and clean up the existing files.
+- **Bug: toolbar hover bands on the Click (two bands) and Shortcuts (one band) tabs** are still there after hiding the top scroll edge effect (409a248). Cause not found yet.
 - **Manual check pending (user will do it later):** configurable shortcut — change to ⌃⌥K, use it from another app, ⇧K is rejected, it persists after relaunch, Reset returns to F6.
 - M6: Hardening and release (T-601 to T-604). Also set `MARKETING_VERSION` to 0.1.0 (About currently shows the template's 1.0).
 
