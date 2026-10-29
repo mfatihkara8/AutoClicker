@@ -76,6 +76,9 @@ struct AutoClickerApp: App {
         }
         .defaultSize(WindowMetrics.defaultContentSize)
         .windowResizability(.contentMinSize)
+        // No window title in the toolbar (SPEC §3.5). `MainView` also removes it on macOS 15 and later; this covers
+        // macOS 14, which has no `.toolbar(removing: .title)`. The title still names the window in the Window menu.
+        .windowToolbarStyle(.unified(showsTitle: false))
         .keyboardShortcut("0")
         .commands {
             AppCommands(navigation: navigation, mainWindowID: Self.mainWindowID, bugReportURL: bugReportURL)

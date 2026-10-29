@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The Start/Stop control, either as the big button on the Main tab or as the compact toolbar button with a status dot
-/// shown on every tab.
+/// The Start/Stop control, either as the big button on the Main tab or as the round, icon-only toolbar button shown on
+/// every tab.
 ///
 /// Start and Stop call different intents: Stop must report `.user`, while the shortcut reports `.hotkey`. There is no
 /// default keyboard shortcut, because Return commits the number fields and must never start clicking.
@@ -9,7 +9,7 @@ struct StartStopButton: View {
     enum Size {
         /// Full width and prominent, for the Main tab.
         case large
-        /// Small, with a status dot, for the toolbar.
+        /// Round and icon-only, for the toolbar. The run state is shown next to it by `RunStatusIndicator`.
         case compact
     }
 
@@ -35,19 +35,16 @@ struct StartStopButton: View {
             .disabled(!isRunning && !canStart)
             .help(help)
         case .compact:
+            let presentation = ToolbarRunPresentation(
+                isRunning: isRunning, canStart: canStart, toggleHotkeyName: toggleHotkeyName)
             Button(action: action) {
-                HStack(spacing: 6) {
-                    Image(systemName: "circle.fill")
-                        .font(.system(size: 8))
-                        .foregroundStyle(isRunning ? Color.green : Color.secondary)
-                        .accessibilityHidden(true)
-                    Text(isRunning ? "Stop" : "Start")
-                }
+                Image(systemName: presentation.buttonSymbolName)
             }
-            .disabled(!isRunning && !canStart)
-            .help(help)
-            // The dot is hidden from VoiceOver, so the state it shows is read as the value instead.
-            .accessibilityValue(Text(isRunning ? "Active" : "Inactive"))
+            // A circle on every macOS version; macOS 26 and later draw it as a Liquid Glass circle in the toolbar.
+            .buttonBorderShape(.circle)
+            .disabled(presentation.isButtonDisabled)
+            .help(presentation.buttonHelp)
+            .accessibilityLabel(presentation.buttonAccessibilityLabel)
         }
     }
 
