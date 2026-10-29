@@ -9,7 +9,7 @@ import Testing
 /// `UserDefaults.standard` and can run in parallel.
 @MainActor
 final class SettingsStoreTests {
-    private let suiteName = "AutoClickerTests.\(UUID().uuidString)"
+    private let suiteName = TestDefaultsSuite.makeName(prefix: "SettingsStoreTests")
     private let defaults: UserDefaults
     private let key = "clickConfiguration"
 
@@ -20,7 +20,7 @@ final class SettingsStoreTests {
     deinit {
         // `deinit` is nonisolated and cannot touch the non-Sendable `defaults`, so a fresh handle on the same suite
         // removes it.
-        UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
+        TestDefaultsSuite.remove(suiteName)
     }
 
     private static let customConfiguration = ClickConfiguration(

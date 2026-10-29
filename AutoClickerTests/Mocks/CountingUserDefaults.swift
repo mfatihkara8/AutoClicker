@@ -3,7 +3,7 @@ import os
 
 /// A `UserDefaults` suite that counts writes, so tests can check how often the settings are saved.
 ///
-/// Create it with `init?(suiteName:)` and remove the suite's persistent domain when done, as with any test suite.
+/// Create it with `init?(suiteName:)` on a `TestDefaultsSuite` name and remove the suite with `TestDefaultsSuite` when done.
 final class CountingUserDefaults: UserDefaults {
     // A lock rather than a plain `var`, because `UserDefaults` may be used from any thread.
     private let writes = OSAllocatedUnfairLock(initialState: 0)
