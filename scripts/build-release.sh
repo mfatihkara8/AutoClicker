@@ -6,10 +6,12 @@
 #
 #     scripts/build-release.sh               # Release build, verified, packaged as build/Release/AutoClicker-<version>.dmg
 #     scripts/build-release.sh --profiling   # the same Release build, debuggable, with no DMG
+#     scripts/build-release.sh NAME=value    # any number of extra build settings, passed on to xcodebuild
 #
 # Signing: the project's automatic signing with the team's "Apple Development" identity. The app is never ad-hoc
 # signed, because macOS ties the Accessibility grant to a stable signature (SPEC §1). It is not notarized either,
-# which needs a Developer ID certificate from the paid Apple Developer Program; README.md has those steps.
+# which needs a Developer ID certificate from the paid Apple Developer Program. With one, build with
+# `CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application"`; README.md has the notarization steps.
 #
 # --profiling keeps the `com.apple.security.get-task-allow` entitlement, so `leaks` and Instruments can attach to the
 # app. That entitlement must never ship, so this build gets its own folder (build/Release/Profiling) and no DMG.
@@ -25,6 +27,7 @@ usage() {
 }
 
 profiling=false
+extra_settings=()
 for arg in "$@"; do
     case "$arg" in
         --profiling) profiling=true ;;
@@ -32,6 +35,7 @@ for arg in "$@"; do
             usage
             exit 0
             ;;
+        [A-Z]*=*) extra_settings+=("$arg") ;;
         *)
             echo "error: unknown option: $arg" >&2
             usage >&2
@@ -85,6 +89,12 @@ if ! $profiling; then
         # development builds by default. Profiling builds skip it so they also work offline.
         OTHER_CODE_SIGN_FLAGS=--timestamp
     )
+fi
+
+# Last, so a setting given on the command line wins over the defaults above. (Bash 3.2, which macOS ships, treats
+# expanding an empty array as an unset variable, hence the check.)
+if ((${#extra_settings[@]})); then
+    xcodebuild_args+=("${extra_settings[@]}")
 fi
 
 if $profiling; then
