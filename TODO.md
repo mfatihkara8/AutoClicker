@@ -5,16 +5,17 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** M6, Hardening and release
+**Current milestone:** none — Phase 1 shipped as 0.1.0 (2026-10-29)
 
 ## Now
-- [ ] T-604: push the `v0.1.0` tag, make the repo public and publish the GitHub Release with the DMG (waiting for the user's go)
+- [ ] First-launch check of the published DMG (download it, follow README › First launch on macOS 15+)
 
 ## Next
 - SC-7 (fixed target on a secondary monitor): untested, no second display; the user decided not to work on it for now.
 - Phase 2 planning (see docs/ROADMAP.md).
 
 ## Done
+- [x] T-604 (2026-10-29): `v0.1.0` tagged, repo made public, GitHub Release published with `AutoClicker-0.1.0.dmg` (SHA-256 75436604…1f67)
 - [x] T-602 (2026-10-29): SC pass recorded in the CHANGELOG 0.1.0 entry; shortcut (⌃⌥K from other apps, ⇧K rejected, persists, Reset → F6) and modifier clicks (⌘-click in Safari and Finder, persists) checked by hand
 - [x] T-601 (2026-10-29): 10 ms run 6,000/6,000 clicks, 3.6% CPU (was 13%: status-dot pulse, whole-tab re-render, 15 Hz), flat memory, idle 0%, 0 leaks
 - [x] T-603 (2026-10-29): `scripts/build-release.sh`, README install, first launch, release build and notarization sections; version 0.1.0
