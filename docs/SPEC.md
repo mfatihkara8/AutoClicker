@@ -108,9 +108,10 @@ Implements the flow in section 2. It is `@Observable` and `@MainActor`.
 - **Window and tabs:**
   - One main window with four tabs: **Main**, **Click**, **Shortcuts** and **About**. It always opens on Main; the last tab is not remembered.
   - Tabs use the native SwiftUI `TabView`, centered at the top of the window, with no custom styling. On macOS 26 and later this is the system's Liquid Glass tab bar.
-  - The user can switch the tabs to a sidebar with the system's own toolbar control (`sidebarAdaptable`, macOS 15 and later). That choice is remembered. On macOS 14 the tabs stay at the top with the standard look.
+  - The window opens with the tabs at the top. One toolbar button at the leading edge switches the tabs to a sidebar; pressing it again (or collapsing the sidebar) moves them back to the top. The last choice is remembered. Sidebar mode needs macOS 15 or later; on macOS 14 the tabs stay at the top with the standard look and the button is hidden.
+  - The toolbar shows no window title and has no empty hoverable or clickable regions.
   - Every tab fits the default window size (760×520) without scrolling. The window can grow but cannot shrink below that size. The Click tab uses two columns (Click and Interval on the left, Target and Stop on the right), because one column at 560 wide was too tall.
-- **On every tab:** a compact Start/Stop button with a status dot at the trailing end of the toolbar, and the Accessibility permission banner at the top while permission is missing.
+- **On every tab:** at the trailing end of the toolbar, a non-interactive status indicator (gray dot and "Idle", or green dot and "Active"; no click count) followed by a round, icon-only Start/Stop button (▶︎ while idle, ■ while clicking) with a tooltip naming the shortcut, for example "Start (F6)". The Accessibility permission banner is at the top while permission is missing.
 - **Main tab**, top to bottom:
   1. Active/Inactive status.
   2. The big total click counter with Reset.
