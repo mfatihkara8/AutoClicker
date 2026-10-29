@@ -16,7 +16,7 @@ struct ClickTab: View {
                 IntervalSection(interval: $viewModel.configuration.interval)
             }
             .formStyle(.grouped)
-            .hidingTopScrollEdgeEffect()
+            .tabFormBackground()
 
             Form {
                 TargetSection(
@@ -29,7 +29,7 @@ struct ClickTab: View {
                 StopConditionSection(stopCondition: $viewModel.configuration.stopCondition)
             }
             .formStyle(.grouped)
-            .hidingTopScrollEdgeEffect()
+            .tabFormBackground()
         }
         .disabled(viewModel.isRunning)
     }
