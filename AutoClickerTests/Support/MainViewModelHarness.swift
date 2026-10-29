@@ -9,7 +9,7 @@ import os
 ///
 /// Nothing touches the real system: clicks go to `MockEventPoster`, hotkeys to `MockHotkeyProvider`, shortcut
 /// recording to `MockShortcutRecorder`, trust comes from
-/// `MockPermissionChecker`, settings live in a throwaway `UserDefaults` suite (removed in `deinit`), and the screen,
+/// `MockPermissionChecker`, settings live in a throwaway `TestDefaultsSuite` (removed in `deinit`), and the screen,
 /// window and cursor readers return the values held here. All durations are a few milliseconds so the suite stays
 /// fast.
 @MainActor
@@ -29,7 +29,7 @@ final class MainViewModelHarness {
         var openedURLs: [URL] = []
     }
 
-    let suiteName = "MainViewModelTests.\(UUID().uuidString)"
+    let suiteName = TestDefaultsSuite.makeName(prefix: "MainViewModelTests")
     let defaults: CountingUserDefaults
     let store: SettingsStore
     let poster = MockEventPoster()
@@ -77,7 +77,7 @@ final class MainViewModelHarness {
     deinit {
         // `deinit` is nonisolated and cannot touch the non-Sendable `defaults`, so a fresh handle on the same suite
         // removes it.
-        UserDefaults(suiteName: suiteName)?.removePersistentDomain(forName: suiteName)
+        TestDefaultsSuite.remove(suiteName)
     }
 
     /// Builds a new view model on the shared doubles. `viewModel` is the one most tests use.
