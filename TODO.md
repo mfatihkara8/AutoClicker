@@ -8,14 +8,16 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 **Current milestone:** M6, Hardening and release
 
 ## Now
-- [ ] Manual: ⌘-click a link opens a new tab, ⇧⌘-click multi-selects in Finder, modifiers survive a relaunch
-- [ ] SC-7 (fixed target on a secondary monitor), only if a second display is available
+- [ ] T-604: push the `v0.1.0` tag, make the repo public and publish the GitHub Release with the DMG (waiting for the user's go)
 
 ## Next
-- **Manual check pending (user will do it later):** configurable shortcut — change to ⌃⌥K, use it from another app, ⇧K is rejected, it persists after relaunch, Reset returns to F6.
-- M6: Hardening and release (T-601 to T-604).
+- SC-7 (fixed target on a secondary monitor): untested, no second display; the user decided not to work on it for now.
+- Phase 2 planning (see docs/ROADMAP.md).
 
 ## Done
+- [x] T-602 (2026-10-29): SC pass recorded in the CHANGELOG 0.1.0 entry; shortcut (⌃⌥K from other apps, ⇧K rejected, persists, Reset → F6) and modifier clicks (⌘-click in Safari and Finder, persists) checked by hand
+- [x] T-601 (2026-10-29): 10 ms run 6,000/6,000 clicks, 3.6% CPU (was 13%: status-dot pulse, whole-tab re-render, 15 Hz), flat memory, idle 0%, 0 leaks
+- [x] T-603 (2026-10-29): `scripts/build-release.sh`, README install, first launch, release build and notarization sections; version 0.1.0
 - [x] Test preference leak (2026-10-29): test suites now live at an absolute path in a temporary folder (`TestDefaultsSuite`), so nothing lands in `~/Library/Preferences`; the 2,321 leaked files went to the Trash
 - [x] M9 visual check (2026-10-29): top tabs ↔ sidebar switch, toolbar status + ▶︎/■, no title, no hover bands (forms clipped to the toolbar safe area)
 - [x] T-903: Click tab (two grouped Forms, 760×520) and Shortcuts tab; old card views removed
