@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- The Click and Shortcuts tabs no longer light up a band under the toolbar on hover (macOS 26).
+
 ### Added
 - Tabbed main window with Main, Click, Shortcuts and About tabs, using the native macOS tab bar (Liquid Glass on macOS 26). One toolbar button switches the tabs to a sidebar and back (macOS 15 and later), and the choice is remembered. Every tab's toolbar has an Idle/Active status dot and a round ▶︎/■ Start/Stop button, nothing scrolls at the default size, and the Click and Shortcuts tabs use the System Settings grouped style.
 - About tab and Help menu with Report a Bug…, which opens a GitHub issue form prefilled with the app and macOS versions. About AutoClicker and Settings… (⌘,) open the matching tabs.

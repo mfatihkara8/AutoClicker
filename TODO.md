@@ -5,20 +5,19 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** M9 visual check, then M6
+**Current milestone:** M6, Hardening and release
 
 ## Now
-- [ ] Manual: look at all four tabs (light and dark), no scrolling; About/⌘,/Report a Bug… menus; sidebar toggle
 - [ ] Manual: ⌘-click a link opens a new tab, ⇧⌘-click multi-selects in Finder, modifiers survive a relaunch
 - [ ] SC-7 (fixed target on a secondary monitor), only if a second display is available
 
 ## Next
 - **Bug: unit tests leak preference files.** Every test suite removes its `UserDefaults` domain, but the `.plist` file stays in `~/Library/Preferences` (2,240 `AutoClickerTests.*` / `MainViewModelTests.*` files as of 2026-10-29). Fix the test helpers so the file is deleted too, and clean up the existing files.
-- **Bug: toolbar hover bands on the Click (two bands) and Shortcuts (one band) tabs** are still there after hiding the top scroll edge effect (409a248). Cause not found yet.
 - **Manual check pending (user will do it later):** configurable shortcut — change to ⌃⌥K, use it from another app, ⇧K is rejected, it persists after relaunch, Reset returns to F6.
 - M6: Hardening and release (T-601 to T-604). Also set `MARKETING_VERSION` to 0.1.0 (About currently shows the template's 1.0).
 
 ## Done
+- [x] M9 visual check (2026-10-29): top tabs ↔ sidebar switch, toolbar status + ▶︎/■, no title, no hover bands (forms clipped to the toolbar safe area)
 - [x] T-903: Click tab (two grouped Forms, 760×520) and Shortcuts tab; old card views removed
 - [x] T-902: Main tab (seven items, settings summary) and About tab with Report a Bug… and the GitHub issue form
 - [x] T-901: native TabView shell (Main, Click, Shortcuts, About), toolbar Start/Stop and banner on every tab, menu commands
