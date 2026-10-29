@@ -51,7 +51,7 @@ AutoClicker/                      Xcode project root
 │   │   │   ├── AppCommands.swift       About → About tab, ⌘, → Shortcuts tab, Help → Report a Bug…
 │   │   │   ├── MainViewModel.swift     @Observable @MainActor
 │   │   │   └── StopReason+Display.swift localized stop-reason text (kept out of Core)
-│   │   ├── Tabs/                       MainTab, ClickTab (two grouped Forms), ShortcutsTab, AboutTab;
+│   │   ├── Tabs/                       MainTab (+ ClickCountView), ClickTab (two grouped Forms), ShortcutsTab, AboutTab;
 │   │   │                               SettingsSummary, AppInfo, BugReportLink (pure, tested);
 │   │   │                               WindowMetrics (default/min content size 760×520)
 │   │   ├── Components/                 PermissionBanner, StartStopButton (large + round icon), RunStatusIndicator, ClickTypeSection,
