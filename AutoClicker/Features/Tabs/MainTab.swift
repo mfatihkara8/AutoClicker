@@ -11,7 +11,7 @@ struct MainTab: View {
     var body: some View {
         VStack(spacing: 14) {
             statusLabel
-            counter
+            ClickCountView(viewModel: viewModel)
             StartStopButton(
                 size: .large,
                 isRunning: viewModel.isRunning,
@@ -49,34 +49,12 @@ struct MainTab: View {
                 .font(.title3.weight(.semibold))
         } icon: {
             Image(systemName: "circle.fill")
+                // No pulse while running: an endless symbol effect redraws the whole window every frame, which does
+                // not fit SC-6's 5% CPU budget.
                 .foregroundStyle(isRunning ? Color.green : Color.secondary)
-                .symbolEffect(.pulse, isActive: isRunning)
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("statusLabel")
-    }
-
-    private var counter: some View {
-        VStack(spacing: 2) {
-            Text(viewModel.totalClicks, format: .number)
-                .font(.system(size: 52, weight: .semibold, design: .rounded))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .accessibilityLabel("Total clicks")
-                .accessibilityValue(Text(viewModel.totalClicks, format: .number))
-                .accessibilityIdentifier("totalClicks")
-            HStack(spacing: 8) {
-                Text("Total clicks")
-                    .foregroundStyle(.secondary)
-                Button("Reset", systemImage: "arrow.counterclockwise", action: viewModel.resetCounter)
-                    .buttonStyle(.borderless)
-                    .help("Set the total click counter back to zero")
-                    .accessibilityIdentifier("resetCounterButton")
-            }
-            .font(.callout)
-        }
     }
 
     private var settingsSummary: some View {

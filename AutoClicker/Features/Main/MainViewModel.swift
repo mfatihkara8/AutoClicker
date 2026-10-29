@@ -172,7 +172,9 @@ final class MainViewModel {
             FailsafeMonitor.ownWindowFrames(geometry: $0)
         },
         cursorLocation: @escaping @MainActor () -> CGPoint? = { ScreenGeometry.currentCursorLocation() },
-        samplingInterval: Duration = .seconds(1) / 15,
+        // The low end of the 10–20 Hz range: every sample re-renders the counter, which is most of the CPU a run costs
+        // (SC-6).
+        samplingInterval: Duration = .seconds(1) / 10,
         permissionCheckInterval: Duration = .seconds(1),
         saveDebounce: Duration = .milliseconds(500),
         countdownTick: Duration = .seconds(1)
