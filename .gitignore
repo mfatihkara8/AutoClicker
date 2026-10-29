@@ -16,6 +16,9 @@ build/
 *.dSYM.zip
 *.dSYM
 
+# Code coverage data written by instrumented builds
+*.profraw
+
 # Swift Package Manager
 .build/
 .swiftpm/
