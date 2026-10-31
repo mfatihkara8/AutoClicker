@@ -44,6 +44,7 @@ xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'plat
 | `docs/DECISIONS.md` | You need the reason behind a fixed choice. To change one, add a new ADR instead of editing an old one. |
 | `docs/GOALS.md` | You need the success criteria (SC-1…SC-11) that each milestone is checked against. |
 | `docs/ROADMAP.md`, `docs/TASKS.md` | You need the milestones (M0–M9) or the tasks (`T-xxx`), each with its "Done when" criteria. |
+| `docs/RELEASING.md` | You build, check or publish a release, measure performance, or set up notarization. |
 | `TODO.md` | You need to know what to work on now. |
 
 ## Workflow
