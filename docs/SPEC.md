@@ -123,7 +123,7 @@ Implements the flow in section 2. It is `@Observable` and `@MainActor`.
 - **Click tab:** a grouped `Form` (System Settings style) with sections for the click type and held modifiers, interval and jitter, target with Pick Location, and the stop condition. Locked while clicking.
 - **Shortcuts tab:** a grouped `Form` with the start/stop shortcut (Change…, Reset) and the fixed Esc emergency stop.
 - **About tab:** the app icon, name and version, the Accessibility permission state (with "Open System Settings" when missing), the GitHub link, the MIT license, and **Report a Bug…**.
-- **Report a Bug…** opens the repository's new-issue page with the bug report form, prefilled with the app version and macOS version and nothing else. The repository has a `.github/ISSUE_TEMPLATE/bug_report.yml` issue form. While the repository is private, only its collaborators can use the link.
+- **Report a Bug…** opens the repository's new-issue page with the bug report form, prefilled with the app version and macOS version and nothing else. The repository has a `.github/ISSUE_TEMPLATE/bug_report.yml` issue form. The repository is public, so anyone with a GitHub account can file a report.
 - **Menus:** "About AutoClicker" in the app menu selects the About tab, Settings… (⌘,) selects the Shortcuts tab, and the Help menu has Report a Bug….
 - **Menu bar extra:** always visible, with the status and Start/Stop (unchanged).
 

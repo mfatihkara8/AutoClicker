@@ -7,7 +7,7 @@ Never edit a past decision. To change one, add a new ADR that supersedes it and 
 ---
 
 ## ADR-001: App Sandbox off, distribution outside the Mac App Store
-**Status:** Accepted
+**Status:** Accepted. The signing and notarization part is superseded by [ADR-010](#adr-010-releases-signed-with-an-apple-development-certificate-not-notarized).
 
 - **Context:** A sandboxed app cannot post synthetic mouse events with `CGEvent`. In practice it also cannot obtain Accessibility trust.
 - **Decision:** App Sandbox is disabled. The app is distributed directly, signed with a Developer ID and notarized.
@@ -110,3 +110,19 @@ Never edit a past decision. To change one, add a new ADR that supersedes it and 
   - Standard AppKit apps (Finder, browsers, editors) read the flags from the mouse event and behave as expected.
   - Apps that poll the real keyboard state, such as some games, may not see the modifier. Supporting them would need key events and a new ADR.
 
+## ADR-010: Releases signed with an Apple Development certificate, not notarized
+**Status:** Accepted (2026-10-29). Supersedes the signing part of ADR-001.
+
+- **Context:**
+  - ADR-001 planned Developer ID signing and notarization. Both require a paid Apple Developer Program membership, which the project does not have.
+  - The free account only offers an Apple Development certificate.
+  - Ad-hoc signing would change the app's signature on every build. Users would then have to grant Accessibility again after each update.
+- **Decision:**
+  - Releases are signed with the team's Apple Development certificate, with the Hardened Runtime, a secure timestamp and no `get-task-allow`.
+  - They are packaged as a signed DMG and published on GitHub Releases without notarization.
+  - The README explains the first-launch warning and the "Open Anyway" step.
+- **Consequences:**
+  - Gatekeeper warns on the first launch, and users open the app once through *System Settings → Privacy & Security → Open Anyway*.
+  - The signature stays stable across releases while the certificate's name stays the same, so the Accessibility permission survives updates.
+  - The signature shows the certificate holder's Apple ID email and name.
+  - Moving to Developer ID later changes the signature once, so users grant Accessibility again. The notarization steps are ready in [RELEASING.md](RELEASING.md#notarization).

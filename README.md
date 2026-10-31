@@ -1,60 +1,187 @@
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/icon-dark.png">
+  <img src="docs/images/icon-light.png" alt="AutoClicker icon" width="128" height="128">
+</picture>
+
 # AutoClicker
 
-A lightweight, native macOS auto clicker built with Swift 6 and SwiftUI. It runs on Apple Silicon and Intel.
+**A precise, lightweight auto clicker for macOS.**<br>
+Native Swift and SwiftUI · Apple Silicon and Intel · Free and open source
 
-> **Status:** 0.1.0, the first release. It completes Phase 1, the core auto clicker. Macro recording and playback are planned for a later phase; see [docs/ROADMAP.md](docs/ROADMAP.md).
+[![Download for macOS](https://img.shields.io/badge/Download_for_macOS-2F6BFF?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/mfatihkara8/AutoClicker/releases/latest)
+
+[![Latest release](https://img.shields.io/github/v/release/mfatihkara8/AutoClicker?color=2F6BFF)](https://github.com/mfatihkara8/AutoClicker/releases/latest)
+[![macOS 14 or later](https://img.shields.io/badge/macOS-14%2B-111111?logo=apple&logoColor=white)](#install)
+[![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
+[![MIT license](https://img.shields.io/github/license/mfatihkara8/AutoClicker?color=lightgrey)](LICENSE)
+
+<img src="docs/images/main-tab.png" alt="The AutoClicker window on its Main tab, with the click counter and the Start button" width="720">
+
+</div>
 
 ## Features
-- **Click types:** left, right, middle and true double clicks.
-- **Modifier clicks:** hold any combination of ⇧ Shift, ⌃ Control, ⌥ Option and ⌘ Command while clicking, for example ⌘-click to open links in new tabs. The keys are set on each click, so none can get stuck.
-- **Interval:** set as hours, minutes, seconds and milliseconds, with optional random jitter. Clicks follow a drift-free schedule.
-- **Target:** the current cursor position or fixed X/Y coordinates. Fixed coordinates work on any display, and "Pick Location" captures them for you.
-- **Stop conditions:** never stop, stop after N clicks, or stop after a set duration.
-- **Start/stop shortcut:** **F6** by default, and it works in every app. You can record your own: F1–F20 alone, or any key with ⌘, ⌥ or ⌃. **Reset** brings back F6.
-- **Emergency stop:** **ESC** stops clicking at once. It is only taken while clicking, so other apps keep their Esc key.
-- **Failsafes:** moving the cursor into a screen corner stops clicking, and the app never clicks its own window.
-- **Window:** one window with **Main**, **Click**, **Shortcuts** and **About** tabs. A toolbar button moves the tabs into a sidebar (macOS 15 and later), and every tab shows the status and a Start/Stop button in the toolbar.
-- **Menu bar:** an always-visible menu bar extra with the status, Start/Stop and Reset Counter. Clicking goes on after the window is closed.
-- **Report a Bug…:** in the About tab and the Help menu. It opens a GitHub issue form prefilled with the app and macOS versions, and nothing else.
-- **Settings:** saved between launches.
+- **Every click type:** left, right, middle and true double clicks.
+- **Precise timing:**
+  - Set the interval in hours, minutes, seconds and milliseconds, down to 1 ms, with optional random jitter.
+  - Clicks follow a drift-free schedule, so the rate stays accurate over long runs.
+- **Click where you want:** at the pointer, or at a fixed point on any display. **Pick Location** captures the point for you.
+- **Stop on your terms:** after a number of clicks, after a set time, or never.
+- **Modifier clicks:** hold <kbd>⇧</kbd> <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>⌘</kbd> while clicking, for example ⌘-click links to open them in new tabs.
+- **Works from any app:** <kbd>F6</kbd> starts and stops clicking wherever you are, and you can record your own shortcut instead.
+- **Built-in safety:**
+  - <kbd>Esc</kbd> stops clicking at once.
+  - Moving the pointer into a screen corner also stops it.
+  - AutoClicker never clicks its own window.
+- **Stays out of the way:**
+  - A menu bar extra keeps clicking after you close the window.
+  - AutoClicker uses no CPU while idle.
+- **Private:**
+  - Accessibility is the only permission it needs.
+  - It makes no network requests and collects no data.
 
-## Requirements
-- macOS 14 Sonoma or later.
-- **Accessibility** permission, which is needed to post clicks. No other permission is needed.
-- To build from source: Xcode 27 or later. The project file uses the Xcode 27 format.
+<p align="center">
+  <img src="docs/images/click-tab.png" alt="The Click tab with the click type, modifier keys, interval, target and stop condition" width="720">
+</p>
 
 ## Install
-1. Download `AutoClicker-<version>.dmg` from [GitHub Releases](https://github.com/mfatihkara8/AutoClicker/releases).
+1. Download **AutoClicker-x.y.z.dmg** from the [latest release](https://github.com/mfatihkara8/AutoClicker/releases/latest).
 2. Open the DMG and drag **AutoClicker** onto **Applications**.
+3. Open AutoClicker from Applications. The first time, macOS shows a warning, because the app is signed by an independent developer but [not notarized](#faq) by Apple:
+   1. Close the warning. Don't move the app to the Trash.
+   2. Go to **System Settings → Privacy & Security**.
+   3. Scroll down to **Security**, click **Open Anyway** next to the message about AutoClicker, and confirm.
+4. Grant **Accessibility** permission, which is needed to post clicks:
+   1. Click **Request Access** in the app's banner, then **Open System Settings** in the dialog.
+   2. Turn on **AutoClicker** under **Privacy & Security → Accessibility**.
+   3. The banner disappears on its own, and you're ready to click.
 
-To check the download, compare its SHA-256 with the one in the release notes:
+**Requirements:** macOS 14 Sonoma or later, on Apple Silicon or Intel.
 
-```sh
-shasum -a 256 ~/Downloads/AutoClicker-<version>.dmg
-```
+<details>
+<summary>Verify the download (optional)</summary>
+<br>
 
-### First launch
-macOS warns you the first time you open AutoClicker, because the app is signed by an independent developer but not notarized by Apple. To open it:
-
-1. Open AutoClicker from Applications once, and dismiss the warning. Don't choose **Move to Trash**.
-2. Go to *System Settings → Privacy & Security*, scroll down to *Security*, click **Open Anyway** next to the message about AutoClicker, and confirm.
-3. Grant Accessibility permission; see [Granting permission](#granting-permission).
-
-On macOS 15 and later, Control-clicking the app and choosing **Open** no longer skips the warning, so step 2 is needed.
-
-## Granting permission
-1. Launch the app and click **Open System Settings** on the banner.
-2. Go to *Privacy & Security → Accessibility* and turn on **AutoClicker**.
-3. The banner disappears on its own within about 2 seconds.
-
-If you change the signing identity, the permission can get stuck. Reset it with:
+Compare the DMG's SHA-256 with the one in the release notes:
 
 ```sh
-tccutil reset Accessibility com.mfatihkara8.AutoClicker
+shasum -a 256 ~/Downloads/AutoClicker-*.dmg
 ```
 
-## Building
-Open `AutoClicker.xcodeproj` in Xcode and press **⌘R**. To build from the terminal instead:
+</details>
+
+## Usage
+1. On the **Click** tab, choose the click type, interval, target and when to stop.
+2. Press <kbd>F6</kbd> to start. Press it again to stop.
+
+| Shortcut | What it does |
+|---|---|
+| <kbd>F6</kbd> | Starts or stops clicking from any app. You can record your own on the **Shortcuts** tab. |
+| <kbd>Esc</kbd> | Stops clicking at once. AutoClicker only takes Esc while it is clicking, so other apps keep their Esc key. |
+| Screen corner | Moving the pointer into any corner of a screen stops clicking. |
+| <kbd>⌘</kbd> <kbd>,</kbd> | Opens the **Shortcuts** tab. |
+
+The menu bar extra shows the status and the click count, and has Start/Stop. AutoClicker keeps running there after you close its window. To quit, choose **Quit AutoClicker** in the menu bar extra, or press <kbd>⌘</kbd> <kbd>Q</kbd> while the window is active.
+
+<p align="center">
+  <img src="docs/images/shortcuts-tab.png" alt="The Shortcuts tab, with the start/stop shortcut, its Change and Reset buttons, and the Esc emergency stop" width="49%">
+  <img src="docs/images/about-tab.png" alt="The About tab, with the version, the Accessibility permission state, the GitHub link and Report a Bug" width="49%">
+</p>
+
+## FAQ
+
+<details>
+<summary><b>macOS says AutoClicker can't be opened</b></summary>
+<br>
+
+Apple notarizes apps only for members of its paid Developer Program, and AutoClicker isn't notarized. The app is still code-signed, so macOS knows who built it and that it hasn't been changed.
+
+To open it once:
+1. Go to **System Settings → Privacy & Security**.
+2. Scroll down to **Security** and click **Open Anyway** next to the message about AutoClicker.
+
+After that, it opens normally. On macOS 15 and later, Control-clicking the app and choosing **Open** no longer skips this step.
+
+</details>
+
+<details>
+<summary><b>Why does it need Accessibility permission?</b></summary>
+<br>
+
+macOS lets an app post mouse clicks to other apps only if it has Accessibility permission. AutoClicker needs nothing else:
+- Its shortcuts use the system hotkey API, so there's no **Input Monitoring**.
+- It never records the screen.
+- It makes no network requests.
+
+</details>
+
+<details>
+<summary><b>Clicking doesn't start, or the permission banner won't go away</b></summary>
+<br>
+
+1. Make sure **AutoClicker** is turned on in **System Settings → Privacy & Security → Accessibility**.
+2. If it's on but the banner stays, remove it from the list with the **−** button, then click **Request Access** in the app again.
+3. Still stuck? Reset the permission in Terminal, then grant it again:
+
+   ```sh
+   tccutil reset Accessibility com.mfatihkara8.AutoClicker
+   ```
+
+</details>
+
+<details>
+<summary><b>F6 does nothing</b></summary>
+<br>
+
+On most Mac keyboards, the top row controls system features by default. You have three options:
+- Hold <kbd>fn</kbd> (<kbd>🌐</kbd>) while pressing <kbd>F6</kbd>.
+- Turn on **Use F1, F2, etc. keys as standard function keys** in **System Settings → Keyboard → Keyboard Shortcuts → Function Keys**.
+- Record another shortcut on the **Shortcuts** tab.
+
+If another app already uses the shortcut, AutoClicker shows a warning.
+
+</details>
+
+<details>
+<summary><b>How do I stop it if something goes wrong?</b></summary>
+<br>
+
+Any of these stops clicking:
+- Press <kbd>Esc</kbd>.
+- Press your start/stop shortcut.
+- Move the pointer into any corner of the screen.
+
+AutoClicker also skips clicks that would land on its own window, so you can always reach the Stop button.
+
+</details>
+
+<details>
+<summary><b>Why isn't it on the Mac App Store?</b></summary>
+<br>
+
+Mac App Store apps must run in the App Sandbox, and a sandboxed app can't post clicks to other apps.
+
+</details>
+
+## Roadmap
+- **Planned next:** saved profiles, multi-point and sequential clicking, and a random offset around the target.
+- **Later:** recording and playing back mouse and keyboard macros.
+
+The details are in [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## Build from source
+You need Xcode 27 or later.
+
+```sh
+git clone https://github.com/mfatihkara8/AutoClicker.git
+cd AutoClicker
+open AutoClicker.xcodeproj
+```
+
+In Xcode, select your own team under **Signing & Capabilities**, then press <kbd>⌘</kbd> <kbd>R</kbd>. Any Apple ID works. A fixed team keeps the Accessibility permission across rebuilds.
+
+From the terminal:
 
 ```sh
 # Build
@@ -63,87 +190,27 @@ xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'plat
 # Unit tests (Swift Testing)
 xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'platform=macOS' -derivedDataPath build/DerivedData -only-testing:AutoClickerTests test
 
-# A single test: -only-testing:<Target>/<Suite>/<testFunction()>
-xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'platform=macOS' -derivedDataPath build/DerivedData -only-testing:'AutoClickerTests/AutoClickerTests/example()' test
+# Format and lint
+swift format -i -r AutoClicker AutoClickerTests AutoClickerUITests
+swift format lint -r --strict AutoClicker AutoClickerTests AutoClickerUITests
 ```
 
-The app is **not sandboxed** and is distributed outside the Mac App Store; see [ADR-001](docs/DECISIONS.md).
+Release builds, performance checks and notarization are covered in [docs/RELEASING.md](docs/RELEASING.md).
 
-## Release build
-`scripts/build-release.sh` builds the Release configuration and packages it for a GitHub Release:
+## Contributing
+- **Bug reports:** choose **Help → Report a Bug…** in the app, or [open an issue](https://github.com/mfatihkara8/AutoClicker/issues/new?template=bug_report.yml).
+- **Pull requests:** welcome. Start with the docs below.
 
-```sh
-# Signed, verified build packaged as build/Release/AutoClicker-<version>.dmg
-scripts/build-release.sh
-
-# The same build for leaks and Instruments, with no DMG
-scripts/build-release.sh --profiling
-```
-
-The release build:
-- is universal (Apple Silicon and Intel) and signed with the team's **Apple Development** certificate, with the Hardened Runtime and a secure timestamp. Your keychain needs that certificate. The app is never ad-hoc signed, because that would reset the Accessibility permission on every build.
-- leaves out the `get-task-allow` entitlement, so no debugger can attach to the shipped app.
-- verifies the signature and prints the Gatekeeper assessment. Gatekeeper rejects the app until it is notarized, so the script shows that result but does not stop on it.
-- writes `build/Release/AutoClicker-<version>.dmg`, holding the app and a link to Applications. The version is `MARKETING_VERSION` from the project. The DMG is signed with the same certificate, and the script prints its SHA-256 for the release notes.
-
-`--profiling` keeps `get-task-allow`, so `leaks` and Instruments can attach, and writes to `build/Release/Profiling`. The script prints the app's path. Never ship this build.
-
-Any `NAME=value` argument is passed to `xcodebuild` as a build setting.
-
-### Notarization (requires a paid Apple Developer Program membership)
-**0.1.0 is not notarized.** With a membership, these steps remove the first-launch warning:
-
-1. Create a **Developer ID Application** certificate: *Xcode → Settings → Accounts → Manage Certificates → + → Developer ID Application*.
-2. Build with it. The script signs the DMG with the same certificate as the app:
-
-   ```sh
-   scripts/build-release.sh CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application"
-   ```
-
-3. Store the notary credentials in your keychain, once. It asks for an app-specific password, which you create at [account.apple.com](https://account.apple.com):
-
-   ```sh
-   xcrun notarytool store-credentials AutoClicker-notary --apple-id <your-apple-id> --team-id 9J8JPZCUTL
-   ```
-
-4. Submit the DMG and wait for the result:
-
-   ```sh
-   xcrun notarytool submit build/Release/AutoClicker-<version>.dmg --keychain-profile AutoClicker-notary --wait
-   ```
-
-   If it is rejected, `xcrun notarytool log <submission-id> --keychain-profile AutoClicker-notary` explains why.
-
-5. Staple the ticket to the DMG, so Gatekeeper can check it offline:
-
-   ```sh
-   xcrun stapler staple build/Release/AutoClicker-<version>.dmg
-   ```
-
-6. Check the result:
-
-   ```sh
-   xcrun stapler validate build/Release/AutoClicker-<version>.dmg
-   spctl -a -t open --context context:primary-signature -vv build/Release/AutoClicker-<version>.dmg
-   ```
-
-   `spctl` should print `accepted` and `source=Notarized Developer ID`.
-
-Stapling changes the DMG, so take its SHA-256 afterwards. The Developer ID certificate also changes the app's signature, so users of an earlier build have to grant Accessibility again.
-
-## Documentation
-
-| Document | Purpose |
+| Document | What's in it |
 |---|---|
-| [docs/SPEC.md](docs/SPEC.md) | Requirements (the source of truth) |
-| [docs/GOALS.md](docs/GOALS.md) | Goals, non-goals and success criteria |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, folder layout, types and flows |
-| [docs/DECISIONS.md](docs/DECISIONS.md) | Architecture decision records |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Milestones and future phases |
-| [docs/TASKS.md](docs/TASKS.md) | Task breakdown with completion criteria |
-| [docs/RULES.md](docs/RULES.md) | Coding and contribution rules |
-| [TODO.md](TODO.md) | Live progress tracker |
+| [SPEC.md](docs/SPEC.md) | The requirements (the source of truth) |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Layers, folders, types and threading |
+| [RULES.md](docs/RULES.md) | Coding, testing and git conventions |
+| [DECISIONS.md](docs/DECISIONS.md) | Why things are the way they are |
+| [GOALS.md](docs/GOALS.md) | Success criteria |
+| [ROADMAP.md](docs/ROADMAP.md), [TASKS.md](docs/TASKS.md) | Milestones and tasks |
+| [RELEASING.md](docs/RELEASING.md) | Building, checking and publishing a release |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
 ## License
-[MIT](LICENSE)
+[MIT](LICENSE) © 2026 Mehmet Fatih Kara

@@ -15,6 +15,7 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Phase 2 planning (see docs/ROADMAP.md).
 
 ## Done
+- [x] README redesign (2026-10-31): centered header with the light/dark icon, download button and badges, four screenshots, features, install, usage, FAQ; release, performance and notarization steps moved to `docs/RELEASING.md`; ADR-010 records the free-signing release decision
 - [x] T-604 (2026-10-29): `v0.1.0` tagged, repo made public, GitHub Release published with `AutoClicker-0.1.0.dmg` (SHA-256 75436604…1f67)
 - [x] T-602 (2026-10-29): SC pass recorded in the CHANGELOG 0.1.0 entry; shortcut (⌃⌥K from other apps, ⇧K rejected, persists, Reset → F6) and modifier clicks (⌘-click in Safari and Finder, persists) checked by hand
 - [x] T-601 (2026-10-29): 10 ms run 6,000/6,000 clicks, 3.6% CPU (was 13%: status-dot pulse, whole-tab re-render, 15 Hz), flat memory, idle 0%, 0 leaks
