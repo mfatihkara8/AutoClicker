@@ -7,7 +7,7 @@ struct AutoClickerApp: App {
     @State private var viewModel: MainViewModel
 
     /// The main window's selected tab. Owned here, next to the window, so the menu commands can select a tab too.
-    @State private var navigation = WindowNavigation()
+    @State private var navigation: WindowNavigation
 
     /// The app's name and versions, read once from the bundle for About and bug reports.
     private let appInfo = AppInfo.current()
@@ -21,6 +21,11 @@ struct AutoClickerApp: App {
     /// The id of the single main window, shared with the menu bar extra so it can bring the window back.
     private static let mainWindowID = "main"
 
+    #if DIAGNOSTICS
+        /// The diagnostics launch asked for by the environment, or `nil`. Never compiled into the shipped build.
+        private let diagnostics: DiagnosticsSession?
+    #endif
+
     /// Composition root: the concrete adapters are created here and injected. No singletons.
     init() {
         // The unit tests run hosted in this app. As a test host it must not register real hotkeys or touch the
@@ -28,27 +33,48 @@ struct AutoClickerApp: App {
         let isTestHost = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
         self.isTestHost = isTestHost
 
+        #if DIAGNOSTICS
+            // A diagnostics launch swaps in adapters that post nothing and fake trust, and a throwaway settings suite.
+            let diagnostics = isTestHost ? nil : DiagnosticsSession.fromEnvironment()
+            self.diagnostics = diagnostics
+            let poster: any EventPosting = diagnostics?.eventPoster ?? CGEventPoster()
+            let permissionChecker: any PermissionChecking =
+                diagnostics?.permissionChecker ?? AccessibilityPermissionChecker()
+            let hotkeys: any HotkeyProviding = diagnostics?.makeHotkeyProvider() ?? CarbonHotkeyManager()
+            let defaults = diagnostics?.defaults ?? Self.makeDefaults(isTestHost: isTestHost)
+        #else
+            let poster = CGEventPoster()
+            let permissionChecker = AccessibilityPermissionChecker()
+            let hotkeys = CarbonHotkeyManager()
+            let defaults = Self.makeDefaults(isTestHost: isTestHost)
+        #endif
+
+        let navigation = WindowNavigation()
+        _navigation = State(initialValue: navigation)
         let counter = ClickCounter()
         let failsafe = FailsafeMonitor(geometry: .current())
-        let engine = ClickEngine(poster: CGEventPoster(), counter: counter, failsafe: failsafe)
+        let engine = ClickEngine(poster: poster, counter: counter, failsafe: failsafe)
         let permissionManager = PermissionManager(
-            checker: AccessibilityPermissionChecker(),
+            checker: permissionChecker,
             openURL: { url in NSWorkspace.shared.open(url) }
         )
         let viewModel = MainViewModel(
             engine: engine,
             counter: counter,
             failsafe: failsafe,
-            hotkeys: CarbonHotkeyManager(),
+            hotkeys: hotkeys,
             // Installs no monitor until the user clicks Change…, so it is safe in the test host too.
             shortcutRecorder: LocalShortcutRecorder(),
             permissionManager: permissionManager,
-            settingsStore: SettingsStore(defaults: Self.makeDefaults(isTestHost: isTestHost))
+            settingsStore: SettingsStore(defaults: defaults)
         )
         if !isTestHost {
             viewModel.activate()
         }
         _viewModel = State(initialValue: viewModel)
+        #if DIAGNOSTICS
+            diagnostics?.start(viewModel: viewModel, navigation: navigation)
+        #endif
 
         // Registered here rather than in a view, because the window may already be closed when the app quits. The
         // observer lives as long as the app, so its token is not kept.
@@ -72,7 +98,12 @@ struct AutoClickerApp: App {
                 // Every tab is laid out for this size, so the window may grow but never shrink below it (SPEC §3.5).
                 .frame(
                     minWidth: WindowMetrics.defaultContentSize.width,
-                    minHeight: WindowMetrics.defaultContentSize.height)
+                    minHeight: WindowMetrics.defaultContentSize.height
+                )
+                #if DIAGNOSTICS
+                    // View-only preferences such as the sidebar layout go to the throwaway suite too.
+                    .defaultAppStorage(diagnostics?.defaults ?? .standard)
+                #endif
         }
         .defaultSize(WindowMetrics.defaultContentSize)
         .windowResizability(.contentMinSize)
@@ -86,12 +117,22 @@ struct AutoClickerApp: App {
 
         // Always present, so the app keeps running (and clicking) after the window is closed. Hidden when hosting the
         // unit tests, so a test run leaves no icon in the user's menu bar.
-        MenuBarExtra(isInserted: .constant(!isTestHost)) {
+        MenuBarExtra(isInserted: .constant(showsMenuBarExtra)) {
             MenuBarContent(viewModel: viewModel, mainWindowID: Self.mainWindowID)
         } label: {
             MenuBarLabel(viewModel: viewModel)
         }
         .menuBarExtraStyle(.menu)
+    }
+
+    /// Whether the menu bar extra is inserted: not while hosting the unit tests, nor during a snapshot run.
+    private var showsMenuBarExtra: Bool {
+        #if DIAGNOSTICS
+            if diagnostics?.showsMenuBarExtra == false {
+                return false
+            }
+        #endif
+        return !isTestHost
     }
 
     /// The new-issue link prefilled with this app's and macOS's versions.
