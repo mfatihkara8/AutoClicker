@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-02
+
+Phase 2: click sequences, a random position offset and profiles.
+
+Checked on an Apple M5 Pro Mac with macOS 27.0.1:
+- **SC-12 to SC-14** pass as acceptance tests: a 3-point sequence clicks in order with exact counts, every offset click lands inside its radius, and a saved profile survives a relaunch and restores every setting.
+- **SC-15:** a 60 s sequence run with a 20 pt offset used 3.3% CPU on average, with 0% idle and no leaks (dry run without posting events).
+- An end-to-end check with real events (`scripts/live-check.sh`) passed: Add Point through the real sheet, the menu bar Profiles submenu, and 12 of 12 clicks in sequence order with ⌘ held and the offset inside 8 pt.
+
 ### Added
 - Click sequences: the Target section's new **Sequence** mode clicks up to 50 points in order, each after its own delay, then starts over. **Edit Points…** opens a sheet to add points with the 3-second Pick Location countdown, edit X, Y and the delay, reorder and remove them. Click type, modifiers, jitter and the stop condition apply to every point, and timing stays drift-free.
 - Random position offset: each click on a fixed point or a sequence point can land up to 0–200 pt away, drawn uniformly from a disk. It is off by default and not used with the current cursor.
@@ -46,5 +55,6 @@ Checked on an Apple M5 Pro Mac with macOS 27.0.1:
 - App icon with light, dark and tinted appearances on macOS 26 and later (the light icon on macOS 14 and 15), and a matching blue accent color.
 - `scripts/build-release.sh` builds the signed, universal Release app and its DMG. `scripts/measure-performance.sh` samples a running app's CPU and memory, then checks it for leaks.
 
-[Unreleased]: https://github.com/mfatihkara8/AutoClicker/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mfatihkara8/AutoClicker/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/mfatihkara8/AutoClicker/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/mfatihkara8/AutoClicker/releases/tag/v0.1.0
