@@ -30,7 +30,8 @@ import Observation
 ///
 /// ## Idle cost
 /// Nothing polls while idle: the sampling task exists only during a run, the debounced save only after an edit, the
-/// countdown only while picking a location and the key monitor only while recording a shortcut.
+/// countdown only while picking a location or adding a sequence point, and the key monitor only while recording a
+/// shortcut.
 @Observable @MainActor
 final class MainViewModel {
     /// The number of countdown steps shown by `pickLocation()` before the cursor is captured.
@@ -43,6 +44,7 @@ final class MainViewModel {
     var configuration: ClickConfiguration {
         didSet {
             guard configuration != oldValue else { return }
+            rememberTargetValues()
             scheduleSave()
         }
     }
@@ -76,8 +78,16 @@ final class MainViewModel {
     /// A warning to show while a run is active without the ESC emergency stop, or `nil` when ESC works.
     private(set) var emergencyStopWarning: String?
 
-    /// The remaining seconds of the Pick Location countdown (3, 2, 1), or `nil` when no pick is in progress.
+    /// The remaining seconds of the Pick Location countdown (3, 2, 1), or `nil` when no pick is in progress. It counts
+    /// down for both purposes: a fixed target and a new sequence point (see `pickLocationPurpose`).
     private(set) var pickLocationCountdown: Int?
+
+    /// What the Pick Location countdown in progress captures the cursor for, or `nil` when no pick is in progress.
+    private(set) var pickLocationPurpose: LocationPickPurpose?
+
+    /// The last fixed point and point list seen this session, so switching target kinds brings them back
+    /// (SPEC §7.2). Not persisted.
+    private(set) var targetMemory: ClickTargetMemory
 
     /// Whether the app is trusted for Accessibility, as last observed by the permission manager.
     var isAccessibilityTrusted: Bool {
@@ -86,7 +96,7 @@ final class MainViewModel {
 
     /// Whether `start()` can begin a run. The Start control is disabled while this is `false`.
     var canStart: Bool {
-        isAccessibilityTrusted
+        isAccessibilityTrusted && !hasEmptySequence
     }
 
     /// Whether Change… can start recording a new shortcut. Like the other settings, the shortcut is locked while
@@ -234,6 +244,7 @@ final class MainViewModel {
         self.countdownTick = countdownTick
         let settings = settingsStore.load()
         self.configuration = settings.configuration
+        self.targetMemory = ClickTargetMemory().remembering(settings.configuration.target)
         self.toggleHotkey = settings.toggleHotkey
         self.profiles = settings.profiles
         self.activeProfileID = settings.activeProfileID
@@ -288,6 +299,8 @@ final class MainViewModel {
         // Polling stops once trust is granted, so the cached value may be stale; re-read it before every start.
         permissionManager.refresh()
         guard permissionManager.isTrusted else { return }
+        // After the permission check, so `startOrOpenAccessibilitySettings()` still sees fresh trust.
+        guard !hasEmptySequence else { return }
 
         cancelPickLocation()
         cancelRecordingShortcut()
@@ -331,23 +344,7 @@ final class MainViewModel {
     /// Does nothing while running or while a countdown is already in progress. If the cursor cannot be read, the
     /// target stays unchanged.
     func pickLocation() {
-        guard !isRunning, pickLocationTask == nil else { return }
-        let start = Self.pickLocationCountdownStart
-        let tick = countdownTick
-        pickLocationCountdown = start
-        pickLocationTask = Task { [weak self] in
-            for remaining in stride(from: start, through: 1, by: -1) {
-                guard !Task.isCancelled else { return }
-                self?.pickLocationCountdown = remaining
-                do {
-                    try await Task.sleep(for: tick)
-                } catch {
-                    return
-                }
-            }
-            guard !Task.isCancelled else { return }
-            self?.finishPickLocation()
-        }
+        beginPickLocation(for: .fixedTarget)
     }
 
     /// Cancels a Pick Location countdown in progress and leaves the target unchanged.
@@ -355,6 +352,81 @@ final class MainViewModel {
         pickLocationTask?.cancel()
         pickLocationTask = nil
         pickLocationCountdown = nil
+        pickLocationPurpose = nil
+    }
+
+    // MARK: - Click sequence (T-1201, T-1203)
+
+    /// What a Pick Location countdown captures the cursor for.
+    enum LocationPickPurpose: Equatable {
+        /// The cursor becomes the fixed target (Pick Location).
+        case fixedTarget
+        /// The cursor is appended to the sequence (Add Point in the Edit Points sheet).
+        case sequencePoint
+    }
+
+    /// Whether the target is a sequence without points. Such a sequence cannot start a run (SPEC §7.2).
+    var hasEmptySequence: Bool {
+        guard case .sequence(let points) = configuration.target else { return false }
+        return points.isEmpty
+    }
+
+    /// The Main tab warning for a sequence without points, or `nil` when the target can start.
+    var sequenceWarning: String? {
+        guard hasEmptySequence else { return nil }
+        return String(
+            localized: "Add at least one point to the sequence.",
+            comment: "Warning shown on the Main tab while the click target is a sequence without points.")
+    }
+
+    /// Whether Add Point can start its countdown: idle, no countdown in progress, and a sequence target with room for
+    /// another point.
+    var canAddSequencePoint: Bool {
+        guard !isRunning, !isPickingLocation, case .sequence(let points) = configuration.target else { return false }
+        return ClickSequenceEditor(points: points).canAddPoint
+    }
+
+    /// The remaining seconds of an Add Point countdown, or `nil` when none is in progress.
+    var addSequencePointCountdown: Int? {
+        pickLocationPurpose == .sequencePoint ? pickLocationCountdown : nil
+    }
+
+    /// The remaining seconds of a Pick Location countdown for the fixed target, or `nil` when none is in progress.
+    var fixedTargetPickCountdown: Int? {
+        pickLocationPurpose == .fixedTarget ? pickLocationCountdown : nil
+    }
+
+    /// Starts the 3-second Pick Location countdown, then appends the cursor position to the sequence with the
+    /// interval's duration as its delay (SPEC §7.2).
+    ///
+    /// Does nothing unless `canAddSequencePoint`. If the cursor cannot be read, or the target is no longer a sequence
+    /// when the countdown ends, the target stays unchanged.
+    func addSequencePoint() {
+        guard canAddSequencePoint else { return }
+        beginPickLocation(for: .sequencePoint)
+    }
+
+    /// Cancels an Add Point countdown in progress. A Pick Location countdown for the fixed target keeps running.
+    func cancelAddSequencePoint() {
+        guard pickLocationPurpose == .sequencePoint else { return }
+        cancelPickLocation()
+    }
+
+    private func appendSequencePoint(at point: CGPoint) {
+        guard case .sequence(let points) = configuration.target else { return }
+        var editor = ClickSequenceEditor(points: points)
+        editor.append(
+            point, delayMilliseconds: ClickSequenceEditor.defaultDelayMilliseconds(for: configuration.interval))
+        configuration.target = .sequence(editor.points)
+    }
+
+    /// Keeps `targetMemory` current. Assigns only on a real change, so views reading it are not invalidated by every
+    /// unrelated edit.
+    private func rememberTargetValues() {
+        let memory = targetMemory.remembering(configuration.target)
+        if memory != targetMemory {
+            targetMemory = memory
+        }
     }
 
     // MARK: - Start/stop shortcut
@@ -683,11 +755,41 @@ final class MainViewModel {
 
     // MARK: - Private: pick location and saving
 
+    /// Runs the countdown shared by Pick Location and Add Point, then captures the cursor for `purpose`.
+    private func beginPickLocation(for purpose: LocationPickPurpose) {
+        guard !isRunning, pickLocationTask == nil else { return }
+        let start = Self.pickLocationCountdownStart
+        let tick = countdownTick
+        pickLocationCountdown = start
+        pickLocationPurpose = purpose
+        pickLocationTask = Task { [weak self] in
+            for remaining in stride(from: start, through: 1, by: -1) {
+                guard !Task.isCancelled else { return }
+                self?.pickLocationCountdown = remaining
+                do {
+                    try await Task.sleep(for: tick)
+                } catch {
+                    return
+                }
+            }
+            guard !Task.isCancelled else { return }
+            self?.finishPickLocation()
+        }
+    }
+
     private func finishPickLocation() {
+        let purpose = pickLocationPurpose
         pickLocationTask = nil
         pickLocationCountdown = nil
-        if let point = cursorLocation() {
+        pickLocationPurpose = nil
+        guard let point = cursorLocation() else { return }
+        switch purpose {
+        case .fixedTarget:
             configuration.target = .fixed(point)
+        case .sequencePoint:
+            appendSequencePoint(at: point)
+        case nil:
+            break
         }
     }
 

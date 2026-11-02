@@ -12,7 +12,8 @@ struct SettingsSummaryTests {
         modifiers: ClickModifiers = [],
         interval: ClickInterval = ClickInterval(milliseconds: 100),
         target: ClickTarget = .currentCursor,
-        stopCondition: StopCondition = .never
+        stopCondition: StopCondition = .never,
+        positionOffset: Int = 0
     ) -> SettingsSummary {
         SettingsSummary(
             configuration: ClickConfiguration(
@@ -20,7 +21,8 @@ struct SettingsSummaryTests {
                 interval: interval,
                 target: target,
                 stopCondition: stopCondition,
-                modifiers: modifiers),
+                modifiers: modifiers,
+                positionOffset: positionOffset),
             locale: Self.locale)
     }
 
@@ -103,7 +105,47 @@ struct SettingsSummaryTests {
         let point = ClickPoint(point: .zero, delayMilliseconds: 100)
         #expect(summary(target: .sequence(Array(repeating: point, count: 3))).targetText == "Sequence of 3 points")
         #expect(summary(target: .sequence([point])).targetText == "Sequence of 1 point")
-        #expect(summary(target: .sequence([])).targetText == "Sequence of 0 points")
+        #expect(summary(target: .sequence([])).targetText == "Empty sequence")
+    }
+
+    // MARK: - Sequence and offset (T-1203)
+
+    private static let threePoints = Array(repeating: ClickPoint(point: .zero, delayMilliseconds: 100), count: 3)
+
+    @Test func specExampleForASequenceHasNoIntervalPart() {
+        let text = summary(
+            interval: ClickInterval(milliseconds: 250, jitterMilliseconds: 20), target: .sequence(Self.threePoints)
+        ).text
+        #expect(text == "Left click · Sequence of 3 points · Never stops")
+    }
+
+    @Test func emptySequenceReadsAsOneLine() {
+        #expect(summary(target: .sequence([])).text == "Left click · Empty sequence · Never stops")
+    }
+
+    @Test func offsetFollowsAFixedTarget() {
+        let text = summary(target: .fixed(CGPoint(x: 640, y: 400)), positionOffset: 20).text
+        #expect(text == "Left click · 100 ms · At 640, 400 ± 20 pt · Never stops")
+    }
+
+    @Test func offsetFollowsASequence() {
+        let text = summary(
+            modifiers: .shift, target: .sequence(Self.threePoints), stopCondition: .afterClicks(30), positionOffset: 5
+        ).text
+        #expect(text == "⇧-Left click · Sequence of 3 points ± 5 pt · Stops after 30 clicks")
+    }
+
+    @Test func offsetIsNotShownForTheCursor() {
+        #expect(summary(target: .currentCursor, positionOffset: 20).targetText == "Cursor")
+    }
+
+    @Test func zeroOffsetIsNotShown() {
+        #expect(summary(target: .fixed(CGPoint(x: 1, y: 2)), positionOffset: 0).targetText == "At 1, 2")
+    }
+
+    @Test func offsetIsClampedLikeTheEditor() {
+        #expect(summary(target: .fixed(CGPoint(x: 1, y: 2)), positionOffset: 500).targetText == "At 1, 2 ± 200 pt")
+        #expect(summary(target: .fixed(CGPoint(x: 1, y: 2)), positionOffset: -5).targetText == "At 1, 2")
     }
 
     // MARK: - Stop condition

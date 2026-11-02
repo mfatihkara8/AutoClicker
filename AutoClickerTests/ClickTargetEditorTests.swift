@@ -9,13 +9,14 @@ struct ClickTargetEditorTests {
         #expect(ClickTargetEditor(target: .fixed(CGPoint(x: 1, y: 2))).kind == .fixed)
     }
 
-    @Test func switchingToFixedUsesTheFallbackPoint() {
-        var editor = ClickTargetEditor(target: .currentCursor, fallbackPoint: CGPoint(x: 10, y: 20))
+    @Test func switchingToFixedUsesTheRememberedPoint() {
+        var editor = ClickTargetEditor(
+            target: .currentCursor, memory: ClickTargetMemory(fixedPoint: CGPoint(x: 10, y: 20)))
         editor.kind = .fixed
         #expect(editor.target == .fixed(CGPoint(x: 10, y: 20)))
     }
 
-    @Test func switchingToFixedWithoutAFallbackUsesTheOrigin() {
+    @Test func switchingToFixedWithoutAMemoryUsesTheOrigin() {
         var editor = ClickTargetEditor(target: .currentCursor)
         editor.kind = .fixed
         #expect(editor.target == .fixed(.zero))
@@ -28,7 +29,8 @@ struct ClickTargetEditorTests {
     }
 
     @Test func selectingFixedAgainKeepsThePoint() {
-        var editor = ClickTargetEditor(target: .fixed(CGPoint(x: 10, y: 20)), fallbackPoint: CGPoint(x: 1, y: 1))
+        var editor = ClickTargetEditor(
+            target: .fixed(CGPoint(x: 10, y: 20)), memory: ClickTargetMemory(fixedPoint: CGPoint(x: 1, y: 1)))
         editor.kind = .fixed
         #expect(editor.target == .fixed(CGPoint(x: 10, y: 20)))
     }
@@ -91,9 +93,96 @@ struct ClickTargetEditorTests {
         #expect(editor.target == .sequence(points))
     }
 
-    @Test func switchingFromASequenceToFixedUsesTheFallbackPoint() {
-        var editor = ClickTargetEditor(target: .sequence([]), fallbackPoint: CGPoint(x: 10, y: 20))
+    @Test func switchingFromASequenceToFixedUsesTheRememberedPoint() {
+        var editor = ClickTargetEditor(
+            target: .sequence([]), memory: ClickTargetMemory(fixedPoint: CGPoint(x: 10, y: 20)))
         editor.kind = .fixed
         #expect(editor.target == .fixed(CGPoint(x: 10, y: 20)))
+    }
+
+    // MARK: - Sequence (T-1201)
+
+    private static let points = [
+        ClickPoint(point: CGPoint(x: 1, y: 2), delayMilliseconds: 10),
+        ClickPoint(point: CGPoint(x: 3, y: 4), delayMilliseconds: 20),
+    ]
+
+    @Test func switchingToASequenceBringsBackTheRememberedPoints() {
+        var editor = ClickTargetEditor(
+            target: .fixed(CGPoint(x: 5, y: 5)), memory: ClickTargetMemory(sequencePoints: Self.points))
+        editor.kind = .sequence
+        #expect(editor.target == .sequence(Self.points))
+    }
+
+    @Test func switchingToASequenceWithoutAMemoryStartsEmpty() {
+        var editor = ClickTargetEditor(target: .currentCursor)
+        editor.kind = .sequence
+        #expect(editor.target == .sequence([]))
+    }
+
+    @Test func switchingToASequenceKeepsAtMostTheMaximumPoints() {
+        let many = Array(repeating: Self.points[0], count: ClickTarget.maxSequencePoints + 5)
+        var editor = ClickTargetEditor(target: .currentCursor, memory: ClickTargetMemory(sequencePoints: many))
+        editor.kind = .sequence
+        #expect(editor.sequencePoints.count == ClickTarget.maxSequencePoints)
+    }
+
+    /// Switches `target` to `kind` the way the Target section does: the memory has seen every earlier target.
+    private func switching(
+        _ target: ClickTarget, to kind: ClickTargetEditor.Kind, memory: inout ClickTargetMemory
+    ) -> ClickTarget {
+        memory.remember(target)
+        var editor = ClickTargetEditor(target: target, memory: memory)
+        editor.kind = kind
+        return editor.target
+    }
+
+    @Test func switchingThroughEveryKindKeepsEachModesValues() {
+        let fixed = CGPoint(x: 640, y: 400)
+        var memory = ClickTargetMemory()
+
+        var target = switching(.fixed(fixed), to: .sequence, memory: &memory)
+        #expect(target == .sequence([]))
+        var editor = ClickTargetEditor(target: target, memory: memory)
+        editor.sequencePoints = Self.points
+        target = switching(editor.target, to: .currentCursor, memory: &memory)
+        #expect(target == .currentCursor)
+        target = switching(target, to: .fixed, memory: &memory)
+        #expect(target == .fixed(fixed))
+        target = switching(target, to: .sequence, memory: &memory)
+        #expect(target == .sequence(Self.points))
+    }
+
+    @Test func sequencePointsAreEmptyForOtherKinds() {
+        #expect(ClickTargetEditor(target: .currentCursor).sequencePoints.isEmpty)
+        #expect(ClickTargetEditor(target: .fixed(.zero)).sequencePoints.isEmpty)
+        #expect(ClickTargetEditor(target: .sequence(Self.points)).sequencePoints == Self.points)
+    }
+
+    @Test func settingSequencePointsReplacesThem() {
+        var editor = ClickTargetEditor(target: .sequence([]))
+        editor.sequencePoints = Self.points
+        #expect(editor.target == .sequence(Self.points))
+    }
+
+    @Test func settingSequencePointsForOtherKindsIsIgnored() {
+        var editor = ClickTargetEditor(target: .fixed(CGPoint(x: 5, y: 5)))
+        editor.sequencePoints = Self.points
+        #expect(editor.target == .fixed(CGPoint(x: 5, y: 5)))
+    }
+
+    @Test func settingTooManySequencePointsKeepsTheFirstOnes() {
+        let many = (0..<(ClickTarget.maxSequencePoints + 3)).map {
+            ClickPoint(point: CGPoint(x: $0, y: 0), delayMilliseconds: 1)
+        }
+        var editor = ClickTargetEditor(target: .sequence([]))
+        editor.sequencePoints = many
+        #expect(editor.sequencePoints == Array(many.prefix(ClickTarget.maxSequencePoints)))
+    }
+
+    @Test func onlyTheCursorIgnoresThePositionOffset() {
+        #expect(ClickTargetEditor.Kind.currentCursor.usesPositionOffset == false)
+        #expect(ClickTargetEditor.Kind.fixed.usesPositionOffset)
+        #expect(ClickTargetEditor.Kind.sequence.usesPositionOffset)
     }
 }

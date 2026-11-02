@@ -76,6 +76,10 @@ struct MainTab: View {
 
     private var warnings: some View {
         VStack(spacing: 6) {
+            if let sequenceWarning = viewModel.sequenceWarning {
+                WarningLabel(verbatim: sequenceWarning)
+                    .accessibilityIdentifier("sequenceWarning")
+            }
             if viewModel.isTargetInsideOwnWindow {
                 WarningLabel("Move the cursor outside the AutoClicker window to start clicking.")
                     .accessibilityIdentifier("ownWindowWarning")
