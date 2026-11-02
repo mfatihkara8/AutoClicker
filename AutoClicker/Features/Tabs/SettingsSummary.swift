@@ -6,6 +6,10 @@ import Foundation
 /// A plain value so the wording can be unit tested without building a view. The summary describes what a run will
 /// actually do, so it shows the effective interval (never below 1 ms) and the effective jitter (none when the interval
 /// is too short for it), not the raw input.
+///
+/// A sequence sets its own delays (ADR-011), so its summary has no interval part, as in "Left click · Sequence of 3
+/// points · Never stops". A position offset follows a fixed or sequence target, as in "At 640, 400 ± 20 pt", and never
+/// the cursor, which ignores it (ADR-012).
 struct SettingsSummary: Equatable {
     let configuration: ClickConfiguration
     /// The locale used for numbers and durations; injected so tests do not depend on the machine's settings.
@@ -13,7 +17,13 @@ struct SettingsSummary: Equatable {
 
     /// The parts joined into one line.
     var text: String {
-        [clickText, intervalText, targetText, stopConditionText].joined(separator: " · ")
+        let parts: [String] =
+            if case .sequence = configuration.target {
+                [clickText, targetText, stopConditionText]
+            } else {
+                [clickText, intervalText, targetText, stopConditionText]
+            }
+        return parts.joined(separator: " · ")
     }
 
     /// The click with its held modifiers, such as "Left click" or "⇧⌘-Double click".
@@ -36,8 +46,23 @@ struct SettingsSummary: Equatable {
             comment: "Settings summary: the click interval with its random jitter, such as 100 ms ± 20 ms.")
     }
 
-    /// Where the clicks land, such as "Cursor" or "At 640, 400".
+    /// Where the clicks land, such as "Cursor", "At 640, 400" or "Sequence of 3 points", followed by the position
+    /// offset when one applies, as in "At 640, 400 ± 20 pt".
     var targetText: String {
+        let place = placeText
+        let offset = configuration.positionOffset.clamped(to: ClickConfiguration.positionOffsetRange)
+        guard offset > 0, configuration.target != .currentCursor else { return place }
+        let radius = offset.formatted(.number.locale(locale))
+        return String(
+            localized: "\(place) ± \(radius) pt",
+            comment: """
+                Settings summary: a target with a random position offset; the arguments are the target, such as \
+                At 640, 400, and the offset radius in points.
+                """)
+    }
+
+    /// Where the clicks land, without the position offset.
+    private var placeText: String {
         switch configuration.target {
         case .currentCursor:
             return String(
@@ -49,7 +74,11 @@ struct SettingsSummary: Equatable {
                 localized: "At \(x), \(y)",
                 comment: "Settings summary: every click lands on a fixed point; the arguments are its X and Y.")
         case .sequence(let points):
-            // Phase 2: T-1203 owns the final summary wording (SPEC §7.2), including the interval part.
+            if points.isEmpty {
+                return String(
+                    localized: "Empty sequence",
+                    comment: "Settings summary: the clicks follow a sequence that has no points yet.")
+            }
             let count = points.count.formatted(.number.locale(locale))
             if points.count == 1 {
                 return String(

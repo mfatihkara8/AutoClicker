@@ -3,7 +3,8 @@ import Testing
 
 @testable import AutoClicker
 
-/// Click sequences in the view model (T-1201): Add Point and the target memory.
+/// Click sequences in the view model (T-1201, T-1203): Add Point, the target memory and the empty-sequence start
+/// block.
 @MainActor
 struct MainViewModelSequenceTests {
     private typealias Harness = MainViewModelHarness
@@ -16,6 +17,84 @@ struct MainViewModelSequenceTests {
         _ points: [ClickPoint], interval: ClickInterval = ClickInterval(milliseconds: 250)
     ) -> ClickConfiguration {
         ClickConfiguration(clickType: .left, interval: interval, target: .sequence(points), stopCondition: .never)
+    }
+
+    // MARK: - Empty sequence (T-1203)
+
+    @Test func anEmptySequenceCannotStartAndShowsTheWarning() throws {
+        let harness = try Harness()
+        let viewModel = harness.viewModel
+        viewModel.configuration = Self.sequenceConfiguration([])
+
+        #expect(viewModel.hasEmptySequence)
+        #expect(viewModel.canStart == false)
+        #expect(viewModel.sequenceWarning == "Add at least one point to the sequence.")
+
+        viewModel.start()
+
+        #expect(viewModel.isRunning == false)
+        #expect(harness.engine.isRunning == false)
+        #expect(harness.hotkeys.registerCalls.isEmpty)
+        #expect(viewModel.isSampling == false)
+    }
+
+    @Test func theShortcutDoesNotStartAnEmptySequence() throws {
+        let harness = try Harness()
+        let viewModel = harness.viewModel
+        viewModel.configuration = Self.sequenceConfiguration([])
+
+        viewModel.toggle()
+
+        #expect(viewModel.isRunning == false)
+        #expect(harness.engine.isRunning == false)
+    }
+
+    @Test func theMenuStartDoesNothingForAnEmptySequenceWhenTrusted() throws {
+        let harness = try Harness()
+        let viewModel = harness.viewModel
+        viewModel.configuration = Self.sequenceConfiguration([])
+
+        viewModel.startOrOpenAccessibilitySettings()
+
+        #expect(viewModel.isRunning == false)
+        #expect(harness.environment.openedURLs.isEmpty)
+    }
+
+    @Test func theMenuStartStillOpensSettingsWhenPermissionIsMissing() throws {
+        let harness = try Harness(isTrusted: false)
+        let viewModel = harness.viewModel
+        viewModel.configuration = Self.sequenceConfiguration([])
+
+        viewModel.startOrOpenAccessibilitySettings()
+
+        #expect(viewModel.isRunning == false)
+        #expect(harness.environment.openedURLs == [PermissionManager.accessibilitySettingsURL].compactMap { $0 })
+    }
+
+    @Test(arguments: [
+        ClickTarget.currentCursor, .fixed(CGPoint(x: 1, y: 2)), .sequence([MainViewModelSequenceTests.first]),
+    ])
+    func otherTargetsCanStartWithoutAWarning(target: ClickTarget) throws {
+        let harness = try Harness()
+        let viewModel = harness.viewModel
+        viewModel.configuration.target = target
+
+        #expect(viewModel.hasEmptySequence == false)
+        #expect(viewModel.canStart)
+        #expect(viewModel.sequenceWarning == nil)
+    }
+
+    @Test func aSequenceWithPointsStarts() async throws {
+        let harness = try Harness()
+        let viewModel = harness.viewModel
+        viewModel.configuration = Self.sequenceConfiguration([Self.first])
+
+        viewModel.start()
+
+        #expect(viewModel.isRunning)
+        #expect(harness.engine.isRunning)
+        viewModel.stop()
+        #expect(await harness.waitForStop())
     }
 
     // MARK: - Add Point (T-1201)
@@ -51,6 +130,7 @@ struct MainViewModelSequenceTests {
 
         let expected = ClickPoint(point: Self.pickedPoint, delayMilliseconds: ClickPoint.delayRange.upperBound)
         #expect(viewModel.configuration.target == .sequence([expected]))
+        #expect(viewModel.canStart)
     }
 
     @Test(arguments: [ClickTarget.currentCursor, .fixed(CGPoint(x: 1, y: 2))])

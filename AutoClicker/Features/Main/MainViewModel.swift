@@ -90,7 +90,7 @@ final class MainViewModel {
 
     /// Whether `start()` can begin a run. The Start control is disabled while this is `false`.
     var canStart: Bool {
-        isAccessibilityTrusted
+        isAccessibilityTrusted && !hasEmptySequence
     }
 
     /// Whether Change… can start recording a new shortcut. Like the other settings, the shortcut is locked while
@@ -258,6 +258,8 @@ final class MainViewModel {
         // Polling stops once trust is granted, so the cached value may be stale; re-read it before every start.
         permissionManager.refresh()
         guard permissionManager.isTrusted else { return }
+        // After the permission check, so `startOrOpenAccessibilitySettings()` still sees fresh trust.
+        guard !hasEmptySequence else { return }
 
         cancelPickLocation()
         cancelRecordingShortcut()
@@ -312,7 +314,7 @@ final class MainViewModel {
         pickLocationPurpose = nil
     }
 
-    // MARK: - Click sequence (T-1201)
+    // MARK: - Click sequence (T-1201, T-1203)
 
     /// What a Pick Location countdown captures the cursor for.
     enum LocationPickPurpose: Equatable {
@@ -320,6 +322,20 @@ final class MainViewModel {
         case fixedTarget
         /// The cursor is appended to the sequence (Add Point in the Edit Points sheet).
         case sequencePoint
+    }
+
+    /// Whether the target is a sequence without points. Such a sequence cannot start a run (SPEC §7.2).
+    var hasEmptySequence: Bool {
+        guard case .sequence(let points) = configuration.target else { return false }
+        return points.isEmpty
+    }
+
+    /// The Main tab warning for a sequence without points, or `nil` when the target can start.
+    var sequenceWarning: String? {
+        guard hasEmptySequence else { return nil }
+        return String(
+            localized: "Add at least one point to the sequence.",
+            comment: "Warning shown on the Main tab while the click target is a sequence without points.")
     }
 
     /// Whether Add Point can start its countdown: idle, no countdown in progress, and a sequence target with room for
