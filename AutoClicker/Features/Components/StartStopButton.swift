@@ -18,6 +18,8 @@ struct StartStopButton: View {
     let canStart: Bool
     /// The start/stop shortcut for the help text, or `nil` when it is not registered.
     let toggleHotkeyName: String?
+    /// Whether Start is blocked by an empty click sequence, which changes the disabled button's help text.
+    var hasEmptySequence = false
     let onStart: () -> Void
     let onStop: () -> Void
 
@@ -36,7 +38,8 @@ struct StartStopButton: View {
             .help(help)
         case .compact:
             let presentation = ToolbarRunPresentation(
-                isRunning: isRunning, canStart: canStart, toggleHotkeyName: toggleHotkeyName)
+                isRunning: isRunning, canStart: canStart, toggleHotkeyName: toggleHotkeyName,
+                hasEmptySequence: hasEmptySequence)
             Button(action: action) {
                 Image(systemName: presentation.buttonSymbolName)
             }
@@ -62,6 +65,8 @@ struct StartStopButton: View {
             "Start clicking (\(shortcut))"
         case (false, nil) where canStart:
             "Start clicking"
+        case (false, _) where hasEmptySequence:
+            "Add a point to the sequence to start clicking"
         default:
             "Grant Accessibility permission to start clicking"
         }

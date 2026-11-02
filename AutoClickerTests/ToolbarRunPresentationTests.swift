@@ -40,6 +40,13 @@ struct ToolbarRunPresentationTests {
         #expect(presentation.buttonHelp == "Grant Accessibility permission to start")
     }
 
+    @Test func startIsDisabledForAnEmptySequence() {
+        let presentation = ToolbarRunPresentation(
+            isRunning: false, canStart: false, toggleHotkeyName: "F6", hasEmptySequence: true)
+        #expect(presentation.isButtonDisabled)
+        #expect(presentation.buttonHelp == "Add a point to the sequence to start")
+    }
+
     @Test func stopStaysEnabledWithoutPermission() {
         let presentation = ToolbarRunPresentation(isRunning: true, canStart: false, toggleHotkeyName: "F6")
         #expect(!presentation.isButtonDisabled)

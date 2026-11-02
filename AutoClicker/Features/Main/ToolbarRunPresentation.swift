@@ -10,6 +10,8 @@ struct ToolbarRunPresentation: Equatable {
     /// The display name of the start/stop shortcut, such as "F6" or "⌃⌥K", or `nil` when it is not registered and the
     /// tooltip must not advertise it.
     let toggleHotkeyName: String?
+    /// Whether Start is blocked by an empty click sequence rather than by missing permission (SPEC §7.2).
+    var hasEmptySequence = false
 
     /// The status indicator's text. It never shows the click count, so it stays a fixed width while clicking.
     var statusText: String {
@@ -46,6 +48,10 @@ struct ToolbarRunPresentation: Equatable {
             // Esc always stops a run, even when the start/stop shortcut is not registered.
             String(
                 localized: "Stop (Esc)", comment: "Tooltip of the toolbar Stop button without a start/stop shortcut.")
+        case (false, _) where !canStart && hasEmptySequence:
+            String(
+                localized: "Add a point to the sequence to start",
+                comment: "Tooltip of the disabled toolbar Start button while the click sequence has no points.")
         case (false, _) where !canStart:
             String(
                 localized: "Grant Accessibility permission to start",
