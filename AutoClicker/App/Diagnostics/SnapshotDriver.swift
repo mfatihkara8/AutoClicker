@@ -244,9 +244,12 @@
             report.note(
                 "Sidebar layout \(isOn ? "on" : "off"): window frame \(window.frame), content min \(window.contentMinSize)"
             )
-            // Should the sidebar have widened the window, it would not shrink back on its own.
+            // The sidebar widens the window, and leaving it does not shrink the window back, so the top layout states
+            // that follow are restored to the size they were captured at before.
             if let frame {
                 window.setFrame(frame, display: true)
+                try? await Task.sleep(for: settleTime)
+                report.note("Window restored: frame \(window.frame), content min \(window.contentMinSize)")
             }
         }
 
