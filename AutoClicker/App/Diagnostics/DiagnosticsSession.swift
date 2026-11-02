@@ -6,13 +6,17 @@
     /// Created only when `DiagnosticsMode.current(environment:)` finds one of its environment variables. Then:
     /// - settings live in a throwaway `UserDefaults` suite, also used for `@AppStorage`, so the user's real settings
     ///   are never read or written;
-    /// - the event poster posts nothing, and Accessibility trust is faked, so a run starts without the real grant;
-    /// - snapshot runs also register no real hotkeys and hide the menu bar extra.
+    /// - for snapshots and dry runs, the event poster posts nothing, and Accessibility trust is faked, so a run starts
+    ///   without the real grant;
+    /// - snapshot runs also register no real hotkeys and hide the menu bar extra;
+    /// - a live check keeps the real event poster, the real trust check and real hotkeys (Esc stops its run), because
+    ///   checking real events end to end is its whole point.
     @MainActor
     final class DiagnosticsSession {
         let mode: DiagnosticsMode
         let defaults: UserDefaults
-        let permissionChecker = DiagnosticsPermissionChecker(isTrusted: true)
+        /// The trust state snapshots and dry runs fake. Never used for a live check.
+        let fakePermissionChecker = DiagnosticsPermissionChecker(isTrusted: true)
 
         private let suite: DiagnosticsDefaults
 
@@ -36,19 +40,31 @@
             DiagnosticsLog.write("mode \(mode), settings in \(suite.suiteName)")
         }
 
-        /// Posts nothing: a diagnostics run must never click.
-        let eventPoster: any EventPosting = NoOpEventPoster()
+        /// Posts nothing, so snapshots and dry runs never click; a live check posts real clicks.
+        var eventPoster: any EventPosting {
+            if case .liveCheck = mode { return CGEventPoster() }
+            return NoOpEventPoster()
+        }
 
-        /// Real Carbon hotkeys for a dry run, so it costs what a real run costs; none for snapshots, so the installed
-        /// app keeps F6 and no "shortcut in use" warning shows up in the pictures.
+        /// The real Accessibility check for a live check, which must not post on faked trust; fake trust otherwise,
+        /// paired with the poster that posts nothing.
+        var permissionChecker: any PermissionChecking {
+            if case .liveCheck = mode { return AccessibilityPermissionChecker() }
+            return fakePermissionChecker
+        }
+
+        /// Real Carbon hotkeys for a dry run, so it costs what a real run costs, and for a live check, so Esc stops its
+        /// clicks; none for snapshots, so the installed app keeps F6 and no "shortcut in use" warning shows up in the
+        /// pictures.
         func makeHotkeyProvider() -> any HotkeyProviding {
             switch mode {
             case .snapshots: NoOpHotkeyProvider()
-            case .dryRun: CarbonHotkeyManager()
+            case .dryRun, .liveCheck: CarbonHotkeyManager()
             }
         }
 
-        /// Whether the menu bar extra is shown. A dry run keeps it, because its label updates during a run.
+        /// Whether the menu bar extra is shown. A dry run keeps it, because its label updates during a run, and a live
+        /// check uses its Profiles submenu.
         var showsMenuBarExtra: Bool {
             if case .snapshots = mode { return false }
             return true
@@ -67,11 +83,15 @@
             case .snapshots(let directory):
                 let driver = SnapshotDriver(
                     viewModel: viewModel, navigation: navigation, defaults: defaults,
-                    permissionChecker: permissionChecker, directory: directory)
+                    permissionChecker: fakePermissionChecker, directory: directory)
                 Task { await driver.run() }
             case .dryRun(let seconds, let delays):
                 let driver = DryRunDriver(
                     viewModel: viewModel, navigation: navigation, seconds: seconds, delays: delays)
+                Task { await driver.run() }
+            case .liveCheck(let frameFile, let resultFile):
+                let driver = LiveCheckDriver(
+                    viewModel: viewModel, navigation: navigation, frameFile: frameFile, resultFile: resultFile)
                 Task { await driver.run() }
             }
         }
