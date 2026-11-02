@@ -90,9 +90,10 @@ Added after M8 and done **before** M6, so that 0.1.0 ships with it.
 - **Done when:** every tab fits the default window size without scrolling, on macOS 26 the tab bar is the system Liquid Glass one, and the menu commands select the right tabs.
 
 ## Phase 2: Productivity
-Phase 2 is specified in [SPEC.md §7](SPEC.md#7-phase-2-requirements) and checked against SC-12 to SC-15.
+Phase 2 is specified in [SPEC.md §7](SPEC.md#7-phase-2-requirements) and checked against SC-12 to SC-15. **Done (2026-11-02):** SC-12 to SC-14 pass as acceptance tests (`Phase2AcceptanceTests`); SC-15 passes in a dry run (6,000 clicks, 3.3% CPU, 0% idle, 0 leaks); every tab, target mode and sheet was checked with `scripts/diagnose-ui.sh`.
 
 ### M10: Phase 2 model and settings schema
+**Status:** done (2026-11-02).
 - **Goal:** one shared model for the whole phase, so that the engine, Click tab and profile work can run in parallel.
 - **Deliverables:**
   - `ClickPoint` and the `.sequence` target.
@@ -102,14 +103,17 @@ Phase 2 is specified in [SPEC.md §7](SPEC.md#7-phase-2-requirements) and checke
 - **Done when:** schema version 4 round-trips every new field, older settings migrate, and invalid profile data is repaired.
 
 ### M11: Engine: sequences and position offset
+**Status:** done (2026-11-02).
 - **Goal:** the engine clicks sequences on a cyclic deadline schedule and applies the random offset ([ADR-011](DECISIONS.md#adr-011-click-sequences-with-a-per-point-delay-on-a-cyclic-deadline-schedule), [ADR-012](DECISIONS.md#adr-012-random-position-offset-for-fixed-and-sequence-targets-only)).
 - **Done when:** scheduler and engine tests cover point order, cyclic deadlines, skip-ahead, the offset disk and the failsafes with offsets.
 
 ### M12: Click tab: sequence editor and offset
+**Status:** done (2026-11-02).
 - **Goal:** the user can build a sequence, set a random offset, and see both in the summaries.
 - **Done when:** the Cursor, Fixed and Sequence modes, the Edit Points sheet with Add Point, and the offset row all work while the tab still fits 760×520.
 
 ### M13: Profiles
+**Status:** done (2026-11-02).
 - **Goal:** save, apply, update, rename and delete named profiles from the Profiles tab and the menu bar ([ADR-013](DECISIONS.md#adr-013-profiles-as-named-configuration-snapshots-in-the-settings-envelope)).
 - **Done when:** the profile operations are unit-tested in the view model, the Profiles tab and the menu bar submenu work, and the Main tab shows the active profile.
 

@@ -8,15 +8,15 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 **Current milestone:** Phase 2 (M10–M13) complete; the 0.2.0 release is next (after the user's go)
 
 ## Now
-- [ ] User's hands-on pass (real clicks): a sequence on screen, Edit Points sheet Add Point, menu bar Profiles submenu checkmarks
 - [ ] Release 0.2.0 (docs/RELEASING.md), after the user's go
 
 ## Next
+- Optional hands-on pass with real clicks before 0.2.0: a sequence on screen, Add Point, the menu bar Profiles submenu.
 - First-launch check of the published 0.1.0 DMG.
 - SC-7 (secondary monitor): untested, no second display.
 
 ## Done
-- [x] Phase 2 verification (2026-11-02): SC-12 (150/150, order kept), SC-13 (all clicks ≤ 20 pt, varied), SC-14 (profile survives relaunch, restores every field) as acceptance tests; SC-15 dry run: 6000/6000 clicks, 3.3% CPU while clicking, 0% idle; 28 UI snapshots reviewed (scripts/diagnose-ui.sh); fixed sidebar clipping (window widens by 200 pt) and a 3 pt Click tab scroll with the banner
+- [x] Phase 2 verification (2026-11-02): SC-12 (150/150, order kept), SC-13 (all clicks ≤ 20 pt, varied), SC-14 (profile survives relaunch, restores every field) as acceptance tests; SC-15 dry run: 6000/6000 clicks, 3.3% CPU while clicking, 0% idle, 0 leaks; 28 UI snapshots reviewed (scripts/diagnose-ui.sh); fixed sidebar clipping (window widens by 200 pt) and a 3 pt Click tab scroll with the banner
 - [x] T-1301 to T-1303 (2026-11-02): profile operations in the view model (saved immediately), Profiles tab, menu bar Profiles submenu, Main tab profile line
 - [x] T-1201 to T-1203 (2026-11-02): Cursor/Fixed/Sequence target modes with session memory, Edit Points sheet with Add Point countdown, offset row, interval note, summaries, empty-sequence warning and Start blocking
 - [x] T-1101, T-1102 (2026-11-02): cyclic-step scheduler (O(1) skip-ahead, jitter capped by the shortest step), engine sequences and uniform-disk position offset
