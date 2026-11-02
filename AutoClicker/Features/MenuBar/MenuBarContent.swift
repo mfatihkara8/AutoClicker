@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The items of the menu bar extra: status, Start/Stop, Reset Counter, Show Window and Quit.
+/// The items of the menu bar extra: status, Start/Stop, Reset Counter, the Profiles submenu, Show Window and Quit.
 ///
 /// Rendered with `.menuBarExtraStyle(.menu)`, so SwiftUI turns these views into native menu items and rebuilds them
 /// each time the menu opens; the click count is therefore current whenever the user looks at it.
@@ -42,6 +42,21 @@ struct MenuBarContent: View {
 
         Button("Reset Counter", action: viewModel.resetCounter)
 
+        if !viewModel.profiles.isEmpty {
+            Divider()
+
+            Menu("Profiles") {
+                ForEach(viewModel.profiles) { profile in
+                    // A toggle, so the menu draws the native checkmark on the active profile.
+                    Toggle(isOn: isActiveBinding(for: profile.id)) {
+                        Text(verbatim: profile.name)
+                    }
+                }
+            }
+            // Not while clicking, so a run keeps its configuration (SPEC §7.3).
+            .disabled(!viewModel.canApplyProfile)
+        }
+
         Divider()
 
         Button("Show AutoClicker Window", action: showMainWindow)
@@ -53,6 +68,15 @@ struct MenuBarContent: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+
+    /// Checked for the active profile. Choosing any profile applies it, the active one too, which reverts changes made
+    /// since it was applied.
+    private func isActiveBinding(for id: UUID) -> Binding<Bool> {
+        Binding(
+            get: { viewModel.activeProfileID == id },
+            set: { _ in viewModel.applyProfile(id: id) }
+        )
     }
 
     private func showMainWindow() {
