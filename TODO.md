@@ -8,7 +8,6 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 **Current milestone:** Phase 2 (M10–M13), see docs/SPEC.md §7
 
 ## Now
-- [ ] T-1001: Phase 2 model and settings schema v4 (wave 1)
 - [ ] T-1101, T-1102: engine sequences and position offset (wave 2)
 - [ ] T-1201 to T-1203: Click tab sequence editor, offset, summaries (wave 2)
 - [ ] T-1301 to T-1303: profiles (wave 2)
@@ -19,6 +18,7 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - SC-7 (secondary monitor): untested, no second display.
 
 ## Done
+- [x] T-1001 (2026-11-02): `ClickPoint`, `.sequence` target, `positionOffset`, `Profile` with name rules, `AppSettings` profiles, settings schema v4 with v1–v3 migration
 - [x] README redesign (2026-10-31): centered header with the light/dark icon, download button and badges, four screenshots, features, install, usage, FAQ; release, performance and notarization steps moved to `docs/RELEASING.md`; ADR-010 records the free-signing release decision
 - [x] T-604 (2026-10-29): `v0.1.0` tagged, repo made public, GitHub Release published with `AutoClicker-0.1.0.dmg` (SHA-256 75436604…1f67)
 - [x] T-602 (2026-10-29): SC pass recorded in the CHANGELOG 0.1.0 entry; shortcut (⌃⌥K from other apps, ⇧K rejected, persists, Reset → F6) and modifier clicks (⌘-click in Safari and Finder, persists) checked by hand
