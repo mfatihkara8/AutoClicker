@@ -41,7 +41,11 @@ AutoClicker/                      Xcode project root
 ├── AutoClicker/
 │   ├── App/
 │   │   ├── AutoClickerApp.swift        @main; single Window(id: "main") + MenuBarExtra; composition root
-│   │   └── AppDelegate.swift           keeps the app alive when the main window closes
+│   │   ├── AppDelegate.swift           keeps the app alive when the main window closes
+│   │   └── Diagnostics/                `#if DIAGNOSTICS` only (Debug and --profiling builds, never shipped):
+│   │                                   DiagnosticsMode/Session (env var → throwaway settings, no-op poster, fake
+│   │                                   trust), SnapshotDriver (diagnose-ui.sh), DryRunDriver (SC-15 CPU),
+│   │                                   LiveCheckDriver (live-check.sh, real events), ShowcaseDriver (showcase.sh)
 │   ├── Features/
 │   │   ├── Main/
 │   │   │   ├── MainView.swift          top mode: TabView(.tabBarOnly); sidebar mode: NavigationSplitView (15+); banner + toolbar per tab
@@ -56,7 +60,8 @@ AutoClicker/                      Xcode project root
 │   │   ├── Tabs/                       MainTab (+ ClickCountView, ActiveProfileLine), ClickTab (two grouped Forms), ProfilesTab,
 │   │   │                               ShortcutsTab, AboutTab;
 │   │   │                               SettingsSummary, AppInfo, BugReportLink (pure, tested);
-│   │   │                               WindowMetrics (default/min content size 760×520)
+│   │   │                               WindowMetrics (default/min content size 760×520; sidebarWidth 200 —
+│   │   │                               MainView raises the window minimum by it in the sidebar layout)
 │   │   ├── Components/                 PermissionBanner, StartStopButton (large + round icon), RunStatusIndicator, ClickTypeSection,
 │   │   │                               IntervalSection, TargetSection, StopConditionSection,
 │   │   │                               ModifierToggleRow, KeyCap, NumberField, WarningLabel; pure clamping

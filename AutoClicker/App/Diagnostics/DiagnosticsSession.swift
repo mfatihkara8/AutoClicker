@@ -9,6 +9,7 @@
     /// - for snapshots and dry runs, the event poster posts nothing, and Accessibility trust is faked, so a run starts
     ///   without the real grant;
     /// - snapshot runs also register no real hotkeys and hide the menu bar extra;
+    /// - a showcase posts nothing, fakes trust and registers no hotkeys, but keeps the menu bar extra for screenshots;
     /// - a live check keeps the real event poster, the real trust check and real hotkeys (Esc stops its run), because
     ///   checking real events end to end is its whole point.
     @MainActor
@@ -58,7 +59,7 @@
         /// pictures.
         func makeHotkeyProvider() -> any HotkeyProviding {
             switch mode {
-            case .snapshots: NoOpHotkeyProvider()
+            case .snapshots, .showcase: NoOpHotkeyProvider()
             case .dryRun, .liveCheck: CarbonHotkeyManager()
             }
         }
@@ -92,6 +93,9 @@
             case .liveCheck(let frameFile, let resultFile):
                 let driver = LiveCheckDriver(
                     viewModel: viewModel, navigation: navigation, frameFile: frameFile, resultFile: resultFile)
+                Task { await driver.run() }
+            case .showcase:
+                let driver = ShowcaseDriver(viewModel: viewModel, navigation: navigation)
                 Task { await driver.run() }
             }
         }

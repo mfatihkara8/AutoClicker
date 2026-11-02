@@ -21,6 +21,9 @@ scripts/build-release.sh
 # UI snapshots of every tab/mode/sheet + layout report, isolated settings (DIAGNOSTICS builds only)
 scripts/diagnose-ui.sh
 
+# README screenshots: the app with sample profiles, a sequence and a filled counter (quit with ⌘Q)
+scripts/showcase.sh
+
 # Format and lint (config: .swift-format, 4 spaces, 120 columns); lint must be clean before committing
 swift format -i -r AutoClicker AutoClickerTests AutoClickerUITests
 swift format lint -r --strict AutoClicker AutoClickerTests AutoClickerUITests
