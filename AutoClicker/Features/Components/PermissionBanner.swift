@@ -17,7 +17,8 @@ struct PermissionBanner: View {
                     .foregroundStyle(.yellow)
                     .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 8) {
+                // Tight enough that the Click tab's tallest column still fits under the banner at the default size.
+                VStack(alignment: .leading, spacing: 6) {
                     Text("Accessibility permission required")
                         .font(.headline)
                     Text(
@@ -34,7 +35,7 @@ struct PermissionBanner: View {
                     }
                 }
             }
-            .padding(12)
+            .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(.yellow.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.yellow.opacity(0.4)))
