@@ -11,19 +11,34 @@
         /// posting any event, idle again, then quit. For measuring CPU with `scripts/measure-performance.sh`.
         /// `AUTOCLICKER_DRY_RUN_DELAYS=<ms,ms,…>` sets one point per delay; the default is 3, 3 and 4 ms.
         case dryRun(seconds: Int, delays: [Int])
+        /// `AUTOCLICKER_LIVE_CHECK=<frame file>`: an end-to-end check with real events against the click target of
+        /// `scripts/live-check.sh`, whose window frames are in the file. It adds three sequence points with the real
+        /// Add Point countdown, applies a profile from the menu bar extra, runs 12 real ⌘-clicks, writes
+        /// `AUTOCLICKER_LIVE_CHECK_RESULT=<file>` (default: `live-check-result.json` next to the frame file) and quits.
+        case liveCheck(frameFile: URL, resultFile: URL)
 
         static let snapshotsVariable = "AUTOCLICKER_SNAPSHOTS"
         static let dryRunVariable = "AUTOCLICKER_DRY_RUN"
         static let dryRunDelaysVariable = "AUTOCLICKER_DRY_RUN_DELAYS"
+        static let liveCheckVariable = "AUTOCLICKER_LIVE_CHECK"
+        static let liveCheckResultVariable = "AUTOCLICKER_LIVE_CHECK_RESULT"
         static let defaultDryRunDelays = [3, 3, 4]
 
-        /// The mode the environment asks for, or `nil` for a normal launch. Snapshots win when both are set. A dry run
-        /// with an unreadable or non-positive duration falls back to 30 seconds, and unreadable delays fall back to the
-        /// default ones, rather than doing something unexpected.
+        /// The mode the environment asks for, or `nil` for a normal launch. Snapshots win over a live check, which wins
+        /// over a dry run. A dry run with an unreadable or non-positive duration falls back to 30 seconds, and
+        /// unreadable delays fall back to the default ones, rather than doing something unexpected.
         static func current(environment: [String: String]) -> DiagnosticsMode? {
             if let path = environment[snapshotsVariable], !path.isEmpty {
                 let directory = URL(fileURLWithPath: (path as NSString).expandingTildeInPath, isDirectory: true)
                 return .snapshots(directory: directory.standardizedFileURL)
+            }
+            if let path = environment[liveCheckVariable], !path.isEmpty {
+                let frameFile = Self.fileURL(path)
+                let resultFile = environment[liveCheckResultVariable].flatMap { $0.isEmpty ? nil : Self.fileURL($0) }
+                return .liveCheck(
+                    frameFile: frameFile,
+                    resultFile: resultFile
+                        ?? frameFile.deletingLastPathComponent().appendingPathComponent("live-check-result.json"))
             }
             if let value = environment[dryRunVariable] {
                 let seconds = Int(value.trimmingCharacters(in: .whitespaces)) ?? 0
@@ -34,6 +49,10 @@
                 return .dryRun(seconds: seconds > 0 ? seconds : 30, delays: valid ? delays : defaultDryRunDelays)
             }
             return nil
+        }
+
+        private static func fileURL(_ path: String) -> URL {
+            URL(fileURLWithPath: (path as NSString).expandingTildeInPath).standardizedFileURL
         }
     }
 #endif
