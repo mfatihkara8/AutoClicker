@@ -99,6 +99,13 @@ struct SettingsSummaryTests {
         #expect(summary(target: .fixed(CGPoint(x: -1920, y: 0))).targetText == "At -1920, 0")
     }
 
+    @Test func sequenceTargetShowsItsPointCount() {
+        let point = ClickPoint(point: .zero, delayMilliseconds: 100)
+        #expect(summary(target: .sequence(Array(repeating: point, count: 3))).targetText == "Sequence of 3 points")
+        #expect(summary(target: .sequence([point])).targetText == "Sequence of 1 point")
+        #expect(summary(target: .sequence([])).targetText == "Sequence of 0 points")
+    }
+
     // MARK: - Stop condition
 
     @Test func neverStops() {

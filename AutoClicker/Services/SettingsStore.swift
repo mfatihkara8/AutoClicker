@@ -1,17 +1,21 @@
 import Foundation
 import os
 
-/// Loads and saves the user's `AppSettings` in `UserDefaults` as versioned JSON (ADR-007, ADR-008, ADR-009).
+/// Loads and saves the user's `AppSettings` in `UserDefaults` as versioned JSON (ADR-007, ADR-008, ADR-009, ADR-013).
 ///
 /// The value is stored as `Data` under one key, wrapped in an envelope:
-/// `{"version": 3, "configuration": {...}, "toggleHotkey": {...}}`. The version lets a later build migrate or reject
-/// settings written by another build instead of misreading them.
+/// `{"version": 4, "configuration": {...}, "toggleHotkey": {...}, "profiles": [...], "activeProfileID": "…" | null}`.
+/// The version lets a later build migrate or reject settings written by another build instead of misreading them.
 ///
 /// ## Versions
 /// - 1: `{"version": 1, "configuration": {...}}`. Loaded with F6 as the start/stop shortcut.
 /// - 2: adds `toggleHotkey`, the user-configurable start/stop shortcut.
-/// - 3: adds `configuration.modifiers`, the modifier keys held for every click. Written by this build. Versions 1 and
-///   2 load with no modifiers.
+/// - 3: adds `configuration.modifiers`, the modifier keys held for every click. Versions 1 and 2 load with no
+///   modifiers.
+/// - 4: adds `configuration.positionOffset`, the `.sequence` target kind, `profiles` (each
+///   `{"id", "name", "configuration"}`, the configuration in the version 4 shape) and `activeProfileID`, always
+///   written, as `null` when no profile is active. Written by this build. Versions 1 to 3 load with a position offset
+///   of 0, no profiles and no active profile (SPEC §7.4).
 ///
 /// ## Concurrency
 /// The class is `@MainActor` rather than `Sendable`. `UserDefaults` is documented as thread-safe, but the SDK does
@@ -23,7 +27,7 @@ import os
 @MainActor
 final class SettingsStore {
     /// The schema version written by `save(_:)`.
-    nonisolated static let currentVersion = 3
+    nonisolated static let currentVersion = 4
 
     private let defaults: UserDefaults
     private let key: String
@@ -43,10 +47,12 @@ final class SettingsStore {
     /// Returns the saved settings, or `.default` when nothing usable is stored.
     ///
     /// Version 1 settings keep their configuration and get F6 as the start/stop shortcut. Versions 1 and 2 load with
-    /// no modifiers, since plain clicks were all they could post. A missing value, corrupt
-    /// data, a malformed body or a version this build does not know all fall back to `.default`. A well-formed
-    /// shortcut that `ShortcutValidator` rejects is replaced by F6. Settings are never worth crashing over, and the
-    /// next `save(_:)` overwrites the bad value.
+    /// no modifiers, since plain clicks were all they could post. Versions 1 to 3 load with no position offset, no
+    /// profiles and no active profile. A missing value, corrupt data, a malformed body (a profile included) or a
+    /// version this build does not know all fall back to `.default`. A well-formed shortcut that `ShortcutValidator`
+    /// rejects is replaced by F6. Version 4 profiles get their names repaired with `Profile.repaired(_:)`, and an
+    /// `activeProfileID` that matches no profile loads as `nil`. Settings are never worth crashing over, and the next
+    /// `save(_:)` overwrites the bad value.
     func load() -> AppSettings {
         guard let data = defaults.data(forKey: key) else {
             return .default
@@ -64,8 +70,18 @@ final class SettingsStore {
             switch header.version {
             case Self.currentVersion:
                 let envelope = try decoder.decode(Envelope.self, from: data)
+                let profiles = Profile.repaired(envelope.profiles)
+                let activeProfileID = envelope.activeProfileID.flatMap { id in
+                    profiles.contains { $0.id == id } ? id : nil
+                }
                 return AppSettings(
-                    configuration: envelope.configuration, toggleHotkey: validated(envelope.toggleHotkey))
+                    configuration: envelope.configuration, toggleHotkey: validated(envelope.toggleHotkey),
+                    profiles: profiles, activeProfileID: activeProfileID)
+            case 3:
+                // Version 3 predates the position offset and profiles.
+                let envelope = try decoder.decode(EnvelopeV3.self, from: data)
+                return AppSettings(
+                    configuration: envelope.configuration.migrated, toggleHotkey: validated(envelope.toggleHotkey))
             case 2:
                 // Version 2 predates modifier clicks.
                 let envelope = try decoder.decode(EnvelopeV2.self, from: data)
@@ -91,7 +107,8 @@ final class SettingsStore {
     /// logged rather than thrown, because the caller has no meaningful way to recover.
     func save(_ settings: AppSettings) {
         let envelope = Envelope(
-            version: Self.currentVersion, configuration: settings.configuration, toggleHotkey: settings.toggleHotkey)
+            version: Self.currentVersion, configuration: settings.configuration, toggleHotkey: settings.toggleHotkey,
+            profiles: settings.profiles, activeProfileID: settings.activeProfileID)
         do {
             defaults.set(try JSONEncoder().encode(envelope), forKey: key)
         } catch {
@@ -114,10 +131,66 @@ final class SettingsStore {
         let version: Int
     }
 
-    /// The stored shape of the current schema version (3).
+    /// The stored shape of the current schema version (4).
+    ///
+    /// Every key is required. `activeProfileID` is nullable but always written, so an envelope without the key is
+    /// malformed rather than silently read as "no active profile".
     private struct Envelope: Codable {
         let version: Int
         let configuration: ClickConfiguration
+        let toggleHotkey: Hotkey
+        let profiles: [Profile]
+        let activeProfileID: UUID?
+
+        private enum CodingKeys: String, CodingKey {
+            case version
+            case configuration
+            case toggleHotkey
+            case profiles
+            case activeProfileID
+        }
+
+        init(
+            version: Int, configuration: ClickConfiguration, toggleHotkey: Hotkey, profiles: [Profile],
+            activeProfileID: UUID?
+        ) {
+            self.version = version
+            self.configuration = configuration
+            self.toggleHotkey = toggleHotkey
+            self.profiles = profiles
+            self.activeProfileID = activeProfileID
+        }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            version = try container.decode(Int.self, forKey: .version)
+            configuration = try container.decode(ClickConfiguration.self, forKey: .configuration)
+            toggleHotkey = try container.decode(Hotkey.self, forKey: .toggleHotkey)
+            profiles = try container.decode([Profile].self, forKey: .profiles)
+            guard container.contains(.activeProfileID) else {
+                throw DecodingError.keyNotFound(
+                    CodingKeys.activeProfileID,
+                    DecodingError.Context(
+                        codingPath: container.codingPath, debugDescription: "Version 4 always stores activeProfileID."))
+            }
+            activeProfileID = try container.decodeIfPresent(UUID.self, forKey: .activeProfileID)
+        }
+
+        func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(version, forKey: .version)
+            try container.encode(configuration, forKey: .configuration)
+            try container.encode(toggleHotkey, forKey: .toggleHotkey)
+            try container.encode(profiles, forKey: .profiles)
+            // `encode` rather than the synthesized `encodeIfPresent`, so "no active profile" is an explicit `null`.
+            try container.encode(activeProfileID, forKey: .activeProfileID)
+        }
+    }
+
+    /// The stored shape of version 3, kept only to migrate it.
+    private struct EnvelopeV3: Decodable {
+        let version: Int
+        let configuration: ConfigurationV3
         let toggleHotkey: Hotkey
     }
 
@@ -144,10 +217,30 @@ final class SettingsStore {
         let target: ClickTarget
         let stopCondition: StopCondition
 
-        /// The same configuration with no modifiers held.
+        /// The same configuration with no modifiers held and no position offset.
         var migrated: ClickConfiguration {
             ClickConfiguration(
-                clickType: clickType, interval: interval, target: target, stopCondition: stopCondition, modifiers: [])
+                clickType: clickType, interval: interval, target: target, stopCondition: stopCondition, modifiers: [],
+                positionOffset: 0)
+        }
+    }
+
+    /// The click configuration as version 3 stored it: everything but `positionOffset`.
+    ///
+    /// Decoded separately for the same reason as `ConfigurationV2`: a version 4 configuration without
+    /// `positionOffset` stays malformed.
+    private struct ConfigurationV3: Decodable {
+        let clickType: ClickType
+        let interval: ClickInterval
+        let target: ClickTarget
+        let stopCondition: StopCondition
+        let modifiers: ClickModifiers
+
+        /// The same configuration with no position offset.
+        var migrated: ClickConfiguration {
+            ClickConfiguration(
+                clickType: clickType, interval: interval, target: target, stopCondition: stopCondition,
+                modifiers: modifiers, positionOffset: 0)
         }
     }
 }

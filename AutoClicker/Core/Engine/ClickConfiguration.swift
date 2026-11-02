@@ -9,9 +9,13 @@ struct ClickConfiguration: Sendable, Codable, Equatable {
         target: .currentCursor,
         stopCondition: .never)
 
+    /// The supported random position offset radius, in points (SPEC §7.1). 0 means off.
+    static let positionOffsetRange = 0...200
+
     /// The click posted on every tick.
     var clickType: ClickType
-    /// The time between ticks, including jitter.
+    /// The time between ticks, including jitter. Not used for a `.sequence` target, whose points set their own delays,
+    /// but its jitter still applies (ADR-011).
     var interval: ClickInterval
     /// Where each click lands.
     var target: ClickTarget
@@ -19,15 +23,20 @@ struct ClickConfiguration: Sendable, Codable, Equatable {
     var stopCondition: StopCondition
     /// The modifier keys held for every click, whatever its type. Empty by default.
     var modifiers: ClickModifiers = []
+    /// The radius, in points, of the random offset applied to each click on a fixed or sequence target (ADR-012).
+    /// 0, the default, means off. Ignored for `.currentCursor`. Stored as entered; the supported values are
+    /// `positionOffsetRange`.
+    var positionOffset: Int = 0
 
     // Explicit keys: renaming a property must not silently change the persisted JSON. Schema changes go through the
-    // version handled by `SettingsStore`. Every key is required, `modifiers` included: older schemas without it are
-    // migrated by `SettingsStore`, not guessed at here.
+    // version handled by `SettingsStore`. Every key is required, `modifiers` and `positionOffset` included: older
+    // schemas without them are migrated by `SettingsStore`, not guessed at here.
     private enum CodingKeys: String, CodingKey {
         case clickType
         case interval
         case target
         case stopCondition
         case modifiers
+        case positionOffset
     }
 }
