@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// The tabs of the main window, in the order they are shown (SPEC §3.5).
+/// The tabs of the main window, in the order they are shown (SPEC §3.5, §7.3).
 enum AppTab: Hashable, CaseIterable {
     case main
     case click
+    case profiles
     case shortcuts
     case about
 
@@ -12,6 +13,7 @@ enum AppTab: Hashable, CaseIterable {
         switch self {
         case .main: "Main"
         case .click: "Click"
+        case .profiles: "Profiles"
         case .shortcuts: "Shortcuts"
         case .about: "About"
         }
@@ -22,6 +24,7 @@ enum AppTab: Hashable, CaseIterable {
         switch self {
         case .main: "play.circle"
         case .click: "cursorarrow.click"
+        case .profiles: "square.stack"
         case .shortcuts: "keyboard"
         case .about: "info.circle"
         }

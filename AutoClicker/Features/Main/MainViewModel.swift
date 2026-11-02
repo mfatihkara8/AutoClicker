@@ -8,6 +8,12 @@ import Observation
 /// samples the shared `ClickCounter` at 10–20 Hz while a run is active, and saves the configuration with a short
 /// debounce.
 ///
+/// ## Profiles
+/// It also holds the saved profiles and the active profile's id (SPEC §7.3, ADR-013). Applying a profile copies its
+/// snapshot into `configuration`; editing `configuration` never changes a profile until
+/// `saveChangesToActiveProfile()`. Every profile operation is one deliberate action, so it is saved right away rather
+/// than debounced.
+///
 /// ## Run lifecycle
 /// `start()` checks permission, snapshots the configuration, pushes fresh screen and window snapshots into the
 /// `FailsafeMonitor`, registers the scoped ESC hotkey, starts the engine and starts one sampling task. Every stop,
@@ -110,6 +116,39 @@ final class MainViewModel {
         samplingTask != nil
     }
 
+    // MARK: - State: profiles
+
+    /// The saved profiles, in the order they were saved. Changed only by the profile operations, which save at once.
+    private(set) var profiles: [Profile]
+
+    /// The id of the profile last applied or saved, or `nil` when none is (SPEC §7.3).
+    private(set) var activeProfileID: UUID?
+
+    /// The profile last applied or saved, or `nil` when none is.
+    var activeProfile: Profile? {
+        guard let activeProfileID else { return nil }
+        return profiles.first { $0.id == activeProfileID }
+    }
+
+    /// Whether the working configuration differs from the active profile's snapshot. `false` when no profile is
+    /// active.
+    var isActiveProfileModified: Bool {
+        guard let activeProfile else { return false }
+        return activeProfile.configuration != configuration
+    }
+
+    /// Whether `applyProfile(id:)` would apply a profile now. Not while clicking, so a run keeps the configuration it
+    /// started with, and not during a Pick Location countdown, whose captured point would overwrite the applied
+    /// target.
+    var canApplyProfile: Bool {
+        !isRunning && !isPickingLocation
+    }
+
+    /// Whether another profile can be saved, which it cannot once `Profile.maxCount` profiles exist.
+    var canSaveNewProfile: Bool {
+        profiles.count < Profile.maxCount
+    }
+
     // MARK: - Dependencies
 
     @ObservationIgnored private let engine: ClickEngine
@@ -151,7 +190,7 @@ final class MainViewModel {
     ///   - hotkeys: Registers the start/stop shortcut for the whole app lifetime and ESC while running.
     ///   - shortcutRecorder: Captures the next key press when the user changes the start/stop shortcut.
     ///   - permissionManager: The source of the Accessibility trust state.
-    ///   - settingsStore: Loads the configuration and the start/stop shortcut now and saves every change.
+    ///   - settingsStore: Loads the configuration, the start/stop shortcut and the profiles now and saves every change.
     ///   - geometrySnapshot: Reads the screen configuration; injected so tests need no real displays.
     ///   - ownWindowFrames: Snapshots the app's own window frames in CG space for a geometry.
     ///   - cursorLocation: Reads the cursor in CG global space for Pick Location.
@@ -196,6 +235,8 @@ final class MainViewModel {
         let settings = settingsStore.load()
         self.configuration = settings.configuration
         self.toggleHotkey = settings.toggleHotkey
+        self.profiles = settings.profiles
+        self.activeProfileID = settings.activeProfileID
         self.totalClicks = counter.value
         self.lastPermissionCheck = clock.now
 
@@ -359,6 +400,84 @@ final class MainViewModel {
         cancelRecordingShortcut()
         shortcutWarning = nil
         changeToggleHotkey(to: .f6)
+    }
+
+    // MARK: - Profiles
+
+    /// Returns why `name` cannot name a new profile, or rename the profile `id` when it is given, or `nil` when it
+    /// can. The name rules are `Profile`'s (SPEC §7.3).
+    func profileNameRejection(for name: String, renaming id: UUID? = nil) -> Profile.NameRejection? {
+        Profile.nameRejection(for: name, among: profiles, renaming: id)
+    }
+
+    /// Saves the working configuration as a new profile named `name` (normalized) and makes it the active profile.
+    ///
+    /// - Returns: Why nothing was saved, or `nil` when the profile was saved.
+    @discardableResult
+    func saveNewProfile(named name: String) -> Profile.NameRejection? {
+        if let rejection = profileNameRejection(for: name) {
+            return rejection
+        }
+        let profile = Profile(name: Profile.normalizedName(name), configuration: configuration)
+        profiles.append(profile)
+        activeProfileID = profile.id
+        performSave()
+        return nil
+    }
+
+    /// Copies the profile's snapshot into the working configuration and makes it the active profile.
+    ///
+    /// Does nothing while `canApplyProfile` is `false` or when no profile has this id.
+    ///
+    /// - Returns: Whether the profile was applied.
+    @discardableResult
+    func applyProfile(id: UUID) -> Bool {
+        guard canApplyProfile, let profile = profiles.first(where: { $0.id == id }) else { return false }
+        guard configuration != profile.configuration || activeProfileID != id else { return true }
+        // Through the property, so applying gets the same handling as an edit on the Click tab.
+        configuration = profile.configuration
+        activeProfileID = id
+        performSave()
+        return true
+    }
+
+    /// Overwrites the active profile's snapshot with the working configuration. Does nothing when no profile is
+    /// active or it is not modified.
+    func saveChangesToActiveProfile() {
+        guard let index = profiles.firstIndex(where: { $0.id == activeProfileID }),
+            profiles[index].configuration != configuration
+        else { return }
+        profiles[index].configuration = configuration
+        performSave()
+    }
+
+    /// Renames the profile `id` to `name` (normalized). The profile may keep its own name in another case, and it
+    /// stays active if it was.
+    ///
+    /// - Returns: Why the profile was not renamed, or `nil` when it was renamed, already had this name or does not
+    ///   exist.
+    @discardableResult
+    func renameProfile(id: UUID, to name: String) -> Profile.NameRejection? {
+        guard let index = profiles.firstIndex(where: { $0.id == id }) else { return nil }
+        if let rejection = profileNameRejection(for: name, renaming: id) {
+            return rejection
+        }
+        let normalized = Profile.normalizedName(name)
+        guard profiles[index].name != normalized else { return nil }
+        profiles[index].name = normalized
+        performSave()
+        return nil
+    }
+
+    /// Deletes the profile `id`. Deleting the active profile leaves no profile active; the working configuration is
+    /// kept either way.
+    func deleteProfile(id: UUID) {
+        guard let index = profiles.firstIndex(where: { $0.id == id }) else { return }
+        profiles.remove(at: index)
+        if activeProfileID == id {
+            activeProfileID = nil
+        }
+        performSave()
     }
 
     // MARK: - Persistence
@@ -590,6 +709,9 @@ final class MainViewModel {
     private func performSave() {
         saveTask?.cancel()
         saveTask = nil
-        settingsStore.save(AppSettings(configuration: configuration, toggleHotkey: toggleHotkey))
+        settingsStore.save(
+            AppSettings(
+                configuration: configuration, toggleHotkey: toggleHotkey, profiles: profiles,
+                activeProfileID: activeProfileID))
     }
 }

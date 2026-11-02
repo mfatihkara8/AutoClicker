@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// The main window with the Main, Click, Shortcuts and About tabs (SPEC §3.5).
+/// The main window with the Main, Click, Profiles, Shortcuts and About tabs (SPEC §3.5, §7.3).
 ///
 /// The tabs are a native `TabView` at the top of the window, which macOS 26 and later draw as the Liquid Glass tab
 /// bar. On macOS 15 and later a toolbar button moves them into a sidebar and back. Every tab gets the same chrome: the
@@ -235,6 +235,8 @@ struct MainView: View {
             MainTab(viewModel: viewModel)
         case .click:
             ClickTab(viewModel: viewModel)
+        case .profiles:
+            ProfilesTab(viewModel: viewModel)
         case .shortcuts:
             ShortcutsTab(viewModel: viewModel)
         case .about:

@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// The Main tab: status, counter, Start/Stop, a settings summary, the last stop reason, warnings and the shortcut hint,
-/// top to bottom (SPEC §3.5).
+/// The Main tab: status, counter, Start/Stop, the active profile and a settings summary, the last stop reason, warnings
+/// and the shortcut hint, top to bottom (SPEC §3.5, §7.3).
 ///
 /// It only shows and runs; editing happens on the Click and Shortcuts tabs. It is laid out to fit the default window
 /// size, with the permission banner shown above it, so it never scrolls.
@@ -23,7 +23,11 @@ struct MainTab: View {
             .frame(maxWidth: 280)
             .accessibilityIdentifier("startStopButton")
 
-            settingsSummary
+            // Tight spacing, so the profile line reads as part of the summary and the tab still fits the window.
+            VStack(spacing: 4) {
+                ActiveProfileLine(viewModel: viewModel)
+                settingsSummary
+            }
 
             if !viewModel.isRunning, let reason = viewModel.lastStopReason {
                 Label(reason.displayText, systemImage: "info.circle")
