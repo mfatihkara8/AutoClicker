@@ -90,7 +90,7 @@ Added after M8 and done **before** M6, so that 0.1.0 ships with it.
 - **Done when:** every tab fits the default window size without scrolling, on macOS 26 the tab bar is the system Liquid Glass one, and the menu commands select the right tabs.
 
 ## Phase 2: Productivity
-Phase 2 is specified in [SPEC.md §7](SPEC.md#7-phase-2-requirements) and checked against SC-12 to SC-15. **Done (2026-11-02):** SC-12 to SC-14 pass as acceptance tests (`Phase2AcceptanceTests`); SC-15 passes in a dry run (6,000 clicks, 3.3% CPU, 0% idle, 0 leaks); every tab, target mode and sheet was checked with `scripts/diagnose-ui.sh`.
+Phase 2 is specified in [SPEC.md §7](SPEC.md#7-phase-2-requirements) and checked against SC-12 to SC-15. **Done (2026-11-02):** SC-12 to SC-14 pass as acceptance tests (`Phase2AcceptanceTests`); SC-15 passes in a dry run (6,000 clicks, 3.3% CPU, 0% idle, 0 leaks); every tab, target mode and sheet was checked with `scripts/diagnose-ui.sh`; the hands-on pass ran end to end with real events via `scripts/live-check.sh` (Add Point ×3 through the real sheet, Profiles submenu checkmarks and apply, 12/12 clicks in order 1-2-3, ⌘ on every click, max offset 7.8 of 8 pt).
 
 ### M10: Phase 2 model and settings schema
 **Status:** done (2026-11-02).
