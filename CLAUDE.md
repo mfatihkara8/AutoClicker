@@ -18,6 +18,9 @@ xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'plat
 # Signed Release build + DMG in build/Release (--profiling keeps get-task-allow for leaks/Instruments, no DMG)
 scripts/build-release.sh
 
+# UI snapshots of every tab/mode/sheet + layout report, isolated settings (DIAGNOSTICS builds only)
+scripts/diagnose-ui.sh
+
 # Format and lint (config: .swift-format, 4 spaces, 120 columns); lint must be clean before committing
 swift format -i -r AutoClicker AutoClickerTests AutoClickerUITests
 swift format lint -r --strict AutoClicker AutoClickerTests AutoClickerUITests

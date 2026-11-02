@@ -142,3 +142,9 @@ Notarization requires a paid Apple Developer Program membership. It removes the 
    `spctl` should print `accepted` and `source=Notarized Developer ID`.
 
 Stapling changes the DMG, so take its SHA-256 afterwards. A Developer ID certificate also changes the app's signature, so users of an earlier build have to grant Accessibility again. Moving to Developer ID needs a new ADR that supersedes ADR-010.
+
+## Diagnostics builds
+Debug and `--profiling` builds compile `App/Diagnostics/` (`#if DIAGNOSTICS`); the shipped release build fails its check if any of it is present. A diagnostics launch uses a throwaway settings suite.
+- `scripts/diagnose-ui.sh [dir]` writes PNG snapshots of every tab, target mode and sheet plus `layout-report.txt` (which scroll views scroll).
+- CPU without real clicks (SC-15): `AUTOCLICKER_DRY_RUN=60 AUTOCLICKER_DRY_RUN_DELAYS=10,10,10 <profiling app>/Contents/MacOS/AutoClicker -ApplePersistenceIgnoreState YES &`, then `scripts/measure-performance.sh 80`. The run uses a no-op event poster, a 3-point sequence with a 20 pt offset, and quits about 10 s after it ends.
+

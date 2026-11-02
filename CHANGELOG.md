@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Profiles: a new **Profiles** tab saves the click settings under a name (up to 50), applies, renames and deletes them, and saves changes to the active profile. The menu bar extra has a **Profiles** submenu, and the Main tab shows the active profile and whether it was modified. The start/stop shortcut stays global.
 - Settings schema version 4, which stores sequences, the offset and the profiles. Older settings migrate automatically.
 
+### Fixed
+- Sidebar mode no longer clips the sidebar and the tab content: the window widens by the sidebar width (200 pt).
+- The Click tab no longer scrolls by a few points when the permission banner is shown.
+
 ### Changed
 - The Main tab summary names a sequence and the offset, for example "Left click · Sequence of 3 points ± 5 pt · Never stops". Start is disabled for an empty sequence, with a warning.
 
