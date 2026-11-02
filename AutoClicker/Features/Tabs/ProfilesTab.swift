@@ -101,6 +101,8 @@ struct ProfilesTab: View {
                         step. The start/stop shortcut is shared by all profiles.
                         """)
                 }
+                // A row's only view is laid out like a label, at the leading edge; this centers it in the card.
+                .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("profilesEmptyState")
             } else {
                 ForEach(viewModel.profiles) { profile in

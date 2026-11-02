@@ -20,7 +20,8 @@ struct SequenceEditorSheet: View {
                     ContentUnavailableView {
                         Label("No Points Yet", systemImage: "scope")
                     } description: {
-                        Text("Add Point captures the cursor position after a 3-second countdown.")
+                        // A non-breaking hyphen, so the sheet's width never wraps the line inside "3-second".
+                        Text("Add Point captures the cursor position after a 3\u{2011}second countdown.")
                     }
                 } else {
                     pointList

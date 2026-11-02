@@ -25,6 +25,11 @@ struct MainView: View {
 
     var body: some View {
         tabs
+            // Every tab is laid out for the default content size, so the window may grow but never shrink below it
+            // (SPEC §3.5). The minimum lives here rather than on the scene's root view because it depends on the
+            // layout: with `.windowResizability(.contentMinSize)` a larger minimum makes AppKit widen the window, so
+            // switching to the sidebar adds its width instead of laying the split view out wider than the window.
+            .frame(minWidth: minimumContentWidth, minHeight: WindowMetrics.defaultContentSize.height)
             .animation(.default, value: viewModel.isAccessibilityTrusted)
             // Poll only while the window is on screen (SPEC section 2).
             .onAppear { viewModel.startPermissionMonitoring() }
@@ -99,7 +104,7 @@ struct MainView: View {
             List(AppTab.allCases, id: \.self, selection: sidebarSelection) { tab in
                 Label(tab.title, systemImage: tab.systemImage)
             }
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200, max: 260)
+            .navigationSplitViewColumnWidth(min: 180, ideal: WindowMetrics.sidebarWidth, max: 260)
             // In the sidebar's part of the toolbar, so the button stays at the leading edge next to the window's
             // buttons, where it is in the top tab bar layout.
             .toolbar { sidebarModeItem }
@@ -125,6 +130,12 @@ struct MainView: View {
                 showsTabsInSidebar = false
             }
         }
+    }
+
+    /// The window's minimum content width: the default content width, plus the sidebar's in the sidebar layout.
+    private var minimumContentWidth: CGFloat {
+        guard #available(macOS 15, *), showsTabsInSidebar else { return WindowMetrics.defaultContentSize.width }
+        return WindowMetrics.defaultContentSize.width + WindowMetrics.sidebarWidth
     }
 
     /// The sidebar list's selection. A list selection is optional, but the window always shows a tab, so clearing it
