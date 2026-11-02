@@ -13,7 +13,9 @@ struct ClickTab: View {
             Form {
                 ClickTypeSection(
                     clickType: $viewModel.configuration.clickType, modifiers: $viewModel.configuration.modifiers)
-                IntervalSection(interval: $viewModel.configuration.interval)
+                IntervalSection(
+                    interval: $viewModel.configuration.interval,
+                    usesPointDelays: ClickTargetEditor(target: viewModel.configuration.target).kind == .sequence)
             }
             .formStyle(.grouped)
             .tabFormBackground()
@@ -21,6 +23,7 @@ struct ClickTab: View {
             Form {
                 TargetSection(
                     target: $viewModel.configuration.target,
+                    positionOffset: $viewModel.configuration.positionOffset,
                     memory: viewModel.targetMemory,
                     pickLocationCountdown: viewModel.fixedTargetPickCountdown,
                     isTargetInsideOwnWindow: viewModel.isTargetInsideOwnWindow,

@@ -179,4 +179,10 @@ struct ClickTargetEditorTests {
         editor.sequencePoints = many
         #expect(editor.sequencePoints == Array(many.prefix(ClickTarget.maxSequencePoints)))
     }
+
+    @Test func onlyTheCursorIgnoresThePositionOffset() {
+        #expect(ClickTargetEditor.Kind.currentCursor.usesPositionOffset == false)
+        #expect(ClickTargetEditor.Kind.fixed.usesPositionOffset)
+        #expect(ClickTargetEditor.Kind.sequence.usesPositionOffset)
+    }
 }

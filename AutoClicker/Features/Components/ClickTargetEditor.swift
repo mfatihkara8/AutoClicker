@@ -10,6 +10,12 @@ struct ClickTargetEditor: Equatable {
         case currentCursor
         case fixed
         case sequence
+
+        /// Whether the random position offset applies to this kind (ADR-012): not to the cursor, whose clicks would
+        /// otherwise add up into a random walk.
+        var usesPositionOffset: Bool {
+            self != .currentCursor
+        }
     }
 
     /// Generous enough for any real display arrangement, small enough that the value always fits in an `Int`.

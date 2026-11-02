@@ -1,12 +1,13 @@
 import SwiftUI
 
 /// The Click tab's "Target" section: the current cursor, a fixed point entered by hand or captured with Pick Location,
-/// or a sequence of points edited in a sheet.
+/// or a sequence of points edited in a sheet, plus the random position offset.
 ///
 /// Every mode stays at most four rows tall, so the right column of the Click tab fits the default window size. Notes
 /// that would widen a row's label sit in the footer instead.
 struct TargetSection: View {
     @Binding var target: ClickTarget
+    @Binding var positionOffset: Int
     /// The last fixed point and point list, which come back when switching kinds.
     let memory: ClickTargetMemory
     /// The remaining Pick Location countdown seconds for the fixed target, or `nil` when no such pick is in progress.
@@ -56,6 +57,8 @@ struct TargetSection: View {
                         .accessibilityIdentifier("sequencePointCount")
                 }
             }
+
+            offsetRow
 
             if isTargetInsideOwnWindow {
                 WarningLabel("Move the cursor outside the AutoClicker window to start clicking.")
@@ -116,6 +119,29 @@ struct TargetSection: View {
         }
     }
 
+    private var offsetRow: some View {
+        LabeledContent {
+            HStack(spacing: 4) {
+                Text(verbatim: "±")
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                NumberField(
+                    title: "Random offset in points", value: offsetEditor.points,
+                    range: ClickConfiguration.positionOffsetRange, unit: "pt", identifier: "positionOffset")
+            }
+            // ADR-012: with the cursor as target, offsets would add up into a random walk.
+            .disabled(!kind.usesPositionOffset)
+        } label: {
+            Text("Random offset")
+            if kind.usesPositionOffset {
+                Text("Up to this far from the point. 0 is off.")
+            } else {
+                Text("Not used with Current cursor.")
+                    .accessibilityIdentifier("positionOffsetHint")
+            }
+        }
+    }
+
     private var pointCountText: Text {
         let count = editor.wrappedValue.sequencePoints.count
         return switch count {
@@ -149,13 +175,22 @@ struct TargetSection: View {
             set: { target = $0.target }
         )
     }
+
+    /// Routes the offset field through its editor, which clamps the radius to the supported range.
+    private var offsetEditor: Binding<PositionOffsetEditor> {
+        Binding(
+            get: { PositionOffsetEditor(positionOffset: positionOffset) },
+            set: { positionOffset = $0.positionOffset }
+        )
+    }
 }
 
 #Preview("Cursor") {
     @Previewable @State var target = ClickTarget.currentCursor
+    @Previewable @State var offset = 0
     Form {
         TargetSection(
-            target: $target, memory: ClickTargetMemory(), pickLocationCountdown: nil,
+            target: $target, positionOffset: $offset, memory: ClickTargetMemory(), pickLocationCountdown: nil,
             isTargetInsideOwnWindow: false, sequencePicking: .preview, onPickLocation: {}, onCancelPickLocation: {})
     }
     .formStyle(.grouped)
@@ -164,9 +199,10 @@ struct TargetSection: View {
 
 #Preview("Fixed, picking") {
     @Previewable @State var target = ClickTarget.fixed(CGPoint(x: 640, y: 400))
+    @Previewable @State var offset = 20
     Form {
         TargetSection(
-            target: $target, memory: ClickTargetMemory(), pickLocationCountdown: 2,
+            target: $target, positionOffset: $offset, memory: ClickTargetMemory(), pickLocationCountdown: 2,
             isTargetInsideOwnWindow: true, sequencePicking: .preview, onPickLocation: {}, onCancelPickLocation: {})
     }
     .formStyle(.grouped)
@@ -178,9 +214,10 @@ struct TargetSection: View {
         ClickPoint(point: CGPoint(x: 100, y: 200), delayMilliseconds: 100),
         ClickPoint(point: CGPoint(x: 300, y: 400), delayMilliseconds: 250),
     ])
+    @Previewable @State var offset = 5
     Form {
         TargetSection(
-            target: $target, memory: ClickTargetMemory(), pickLocationCountdown: nil,
+            target: $target, positionOffset: $offset, memory: ClickTargetMemory(), pickLocationCountdown: nil,
             isTargetInsideOwnWindow: false, sequencePicking: .preview, onPickLocation: {}, onCancelPickLocation: {})
     }
     .formStyle(.grouped)

@@ -4,8 +4,13 @@ import SwiftUI
 /// jitter.
 ///
 /// The notes are a subtitle and a footer rather than rows of their own, so the section stays two rows tall.
+///
+/// A sequence target sets its delays per point (ADR-011), so the "Every" row is disabled then, while jitter still
+/// applies to every click.
 struct IntervalSection: View {
     @Binding var interval: ClickInterval
+    /// Whether the target is a sequence, whose points set their own delays instead of the interval.
+    var usesPointDelays = false
 
     var body: some View {
         Section {
@@ -28,6 +33,7 @@ struct IntervalSection: View {
                         range: ClickIntervalEditor.millisecondsRange, unit: "ms", showsStepper: false,
                         identifier: "intervalMilliseconds")
                 }
+                .disabled(usesPointDelays)
             } label: {
                 Text("Every")
             }
@@ -49,7 +55,10 @@ struct IntervalSection: View {
             Text("Interval")
         } footer: {
             // A footer rather than a subtitle, which would push the four fields onto a second line.
-            if state.isRaisedToMinimum {
+            if usesPointDelays {
+                Text("Each point sets its own delay.")
+                    .accessibilityIdentifier("intervalSequenceNote")
+            } else if state.isRaisedToMinimum {
                 WarningLabel("An interval of 0 is raised to the 1 ms minimum.")
             } else {
                 Text("The shortest interval is 1 ms.")
@@ -58,7 +67,8 @@ struct IntervalSection: View {
     }
 
     @ViewBuilder private var jitterNote: some View {
-        if state.isJitterCapped {
+        // The cap is derived from the interval, which a sequence does not use, so it is not shown for one.
+        if state.isJitterCapped && !usesPointDelays {
             if state.effectiveJitterMilliseconds == 0 {
                 WarningLabel("Off: interval too short.")
             } else {
@@ -86,6 +96,15 @@ struct IntervalSection: View {
     @Previewable @State var interval = ClickInterval(milliseconds: 100)
     Form {
         IntervalSection(interval: $interval)
+    }
+    .formStyle(.grouped)
+    .frame(width: 540)
+}
+
+#Preview("Sequence") {
+    @Previewable @State var interval = ClickInterval(milliseconds: 100, jitterMilliseconds: 20)
+    Form {
+        IntervalSection(interval: $interval, usesPointDelays: true)
     }
     .formStyle(.grouped)
     .frame(width: 540)
