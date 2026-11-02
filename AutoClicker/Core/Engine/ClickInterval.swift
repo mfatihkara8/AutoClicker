@@ -4,7 +4,8 @@
 /// negative components, saturates instead of overflowing and never returns less than 1 ms.
 ///
 /// ## Jitter
-/// The scheduler adds `jitterOffset(using:)` to each absolute deadline (`start + n × duration + offset`). Because the
+/// The scheduler adds `jitterOffset(using:)` to each absolute deadline (`start + n × duration + offset`; for a click
+/// sequence the sum of the points' delays, with the cap below taken from the shortest delay, ADR-011). Because the
 /// offsets of two consecutive ticks are independent, the real gap between them is
 /// `duration + offset(n + 1) - offset(n)`, which is at least `duration - 2 × jitter`. To guarantee that gap never drops
 /// to zero or below, the jitter actually applied is capped at `(duration - 1 ms) / 2` (see

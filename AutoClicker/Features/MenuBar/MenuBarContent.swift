@@ -34,6 +34,8 @@ struct MenuBarContent: View {
             // Not disabled without permission: the cached trust can be stale while the window is closed, so the action
             // re-checks it and opens System Settings only if it is really missing.
             Button(presentation.startStopTitle, action: viewModel.startOrOpenAccessibilitySettings)
+                // An empty sequence can never start; the Main tab explains why.
+                .disabled(viewModel.hasEmptySequence)
         }
 
         if !viewModel.isAccessibilityTrusted {

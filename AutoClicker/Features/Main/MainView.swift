@@ -222,6 +222,7 @@ struct MainView: View {
                 isRunning: viewModel.isRunning,
                 canStart: viewModel.canStart,
                 toggleHotkeyName: viewModel.advertisedToggleHotkeyName,
+                hasEmptySequence: viewModel.hasEmptySequence,
                 onStart: viewModel.start,
                 onStop: viewModel.stop
             )
