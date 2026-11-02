@@ -5,21 +5,31 @@ import os
 /// Runs click sessions: drives a `ClickScheduler` and turns each tick into a posted click.
 ///
 /// On every tick, on the engine's serial click queue, it:
-/// 1. reads the cursor and resolves the target (`.currentCursor` uses the cursor; a tick with no readable cursor is
-///    skipped; `.fixed(p)` uses `p`; `.sequence` is skipped until T-1102 implements it),
-/// 2. asks the failsafe what to do (`nil` failsafe means always proceed),
-/// 3. posts the click with the run's modifiers,
-/// 4. increments the shared total `ClickCounter` and the run's own click count,
-/// 5. checks the stop condition.
+/// 1. reads the cursor and resolves the target: `.currentCursor` uses the cursor, and a tick with no readable cursor is
+///    skipped; `.fixed(p)` uses `p`; `.sequence(points)` uses the point of tick `n`, `points[(n − 1) mod k]`,
+/// 2. moves a fixed or sequence target by a random vector from the position offset disk (ADR-012); the current cursor
+///    is never moved, so offsets cannot add up into a random walk,
+/// 3. asks the failsafe what to do with the cursor and that final point (`nil` failsafe means always proceed),
+/// 4. posts the click there with the run's click type and modifiers,
+/// 5. increments the shared total `ClickCounter` and the run's own click count,
+/// 6. checks the stop condition.
+///
+/// ## Schedule
+/// The scheduler's step list (ADR-011) is the interval for `.currentCursor` and `.fixed`, and the points' delays for
+/// `.sequence`, so the first point is clicked one delay after start. The configuration's jitter applies to every tick
+/// either way. A sequence point follows its tick's index, so a tick skipped after a stall also skips its point and the
+/// order stays aligned with the schedule.
 ///
 /// ## Counting
 /// The injected `ClickCounter` is the UI's total and is never reset here; only the user's Reset button does that.
-/// `.afterClicks(n)` counts the clicks of the current run only. Skipped ticks are not counted anywhere.
+/// `.afterClicks(n)` counts the clicks of the current run only, every sequence point included. Skipped ticks are not
+/// counted anywhere.
 ///
 /// ## Stop condition timing
 /// `.afterDuration(t)` is measured from the run start with `ContinuousClock`: the scheduler delivers no tick due
 /// after `t` and ends the run at `t`, even while every tick is being skipped. `.afterClicks(n)` stops right after the
-/// n-th posted click. A condition that is already satisfied at start (a limit of zero or less) ends the run at once.
+/// n-th posted click. A condition that is already satisfied at start (a limit of zero or less) ends the run at once,
+/// and so does an empty sequence, which has nothing to click.
 ///
 /// ## Threading
 /// All mutable state is guarded by one `OSAllocatedUnfairLock`, so `start`, `stop` and the read-only properties are
@@ -39,6 +49,7 @@ final class ClickEngine: Sendable {
     private let counter: ClickCounter
     private let failsafe: (any FailsafeChecking)?
     private let cursorLocation: @Sendable () -> CGPoint?
+    private let positionOffset: @Sendable (Int) -> CGVector
     private let queue: DispatchQueue
     private let scheduler: ClickScheduler
     private let state = OSAllocatedUnfairLock(initialState: State())
@@ -53,18 +64,23 @@ final class ClickEngine: Sendable {
     ///     queue.
     ///   - queue: The serial click queue that runs every tick and every `onStop` call.
     ///   - jitterOffset: Draws one tick's jitter offset; inject a deterministic function in tests.
+    ///   - positionOffset: Draws one click's offset from a disk of the given radius in points. The radius is always
+    ///     inside `ClickConfiguration.positionOffsetRange` and above zero. Called on the click queue; inject a
+    ///     deterministic function in tests.
     init(
         poster: any EventPosting,
         counter: ClickCounter,
         failsafe: (any FailsafeChecking)?,
         cursorLocation: @escaping @Sendable () -> CGPoint? = ScreenGeometry.currentCursorLocation,
         queue: DispatchQueue = DispatchQueue(label: "AutoClicker.ClickEngine", qos: .userInteractive),
-        jitterOffset: @escaping @Sendable (ClickInterval) -> Duration = { $0.jitterOffset() }
+        jitterOffset: @escaping @Sendable (ClickInterval) -> Duration = { $0.jitterOffset() },
+        positionOffset: @escaping @Sendable (Int) -> CGVector = { PositionOffset.random(radius: $0) }
     ) {
         self.poster = poster
         self.counter = counter
         self.failsafe = failsafe
         self.cursorLocation = cursorLocation
+        self.positionOffset = positionOffset
         self.queue = queue
         self.scheduler = ClickScheduler(queue: queue, jitterOffset: jitterOffset)
     }
@@ -94,7 +110,7 @@ final class ClickEngine: Sendable {
 
     /// Starts a run with a snapshot of `configuration`. Does nothing if a run is already active.
     func start(_ configuration: ClickConfiguration) {
-        let runID: UInt64? = state.withLock { state in
+        let started: (runID: UInt64, isEmpty: Bool)? = state.withLock { state in
             guard state.configuration == nil else {
                 return nil
             }
@@ -105,11 +121,16 @@ final class ClickEngine: Sendable {
             let runID = state.runID
             let limit: Duration? =
                 if case .afterDuration(let duration) = configuration.stopCondition { duration } else { nil }
+            // An empty sequence has no steps; its run ends below without ever starting the scheduler.
+            guard let steps = Self.steps(for: configuration.target, interval: configuration.interval) else {
+                return (runID, isEmpty: true)
+            }
             // Started under the engine lock so a concurrent `stop` cannot slip in between and leave an orphaned
             // scheduler run behind. Lock order is always engine, then scheduler; the scheduler never calls back while
             // holding its own lock.
             scheduler.start(
-                interval: configuration.interval,
+                steps: steps,
+                jitterMilliseconds: configuration.interval.jitterMilliseconds,
                 limit: limit,
                 onTick: { [weak self] tick in
                     self?.handleTick(tick, runID: runID)
@@ -117,13 +138,15 @@ final class ClickEngine: Sendable {
                 onLimit: { [weak self] in
                     self?.stop(reason: .conditionMet, runID: runID)
                 })
-            return runID
+            return (runID, isEmpty: false)
         }
-        guard let runID else {
+        guard let started else {
             return
         }
-        if configuration.stopCondition.isSatisfied(clicks: 0, elapsed: .zero) {
-            stop(reason: .conditionMet, runID: runID)
+        // The view model never starts an empty sequence. If one gets here anyway, it ends like a condition that is
+        // already met, so the run is still reported exactly once instead of hanging without ticks.
+        if started.isEmpty || configuration.stopCondition.isSatisfied(clicks: 0, elapsed: .zero) {
+            stop(reason: .conditionMet, runID: started.runID)
         }
     }
 
@@ -133,7 +156,37 @@ final class ClickEngine: Sendable {
         stop(reason: reason, runID: nil)
     }
 
+    /// Returns the point tick `index` (1-based) aims at before any offset, or `nil` if it has none.
+    ///
+    /// `.currentCursor` uses `cursor`, and `.sequence(points)` uses `points[(index − 1) mod k]`, so a skipped tick also
+    /// skips its point. Internal rather than private so tests can check the mapping for any tick index.
+    static func basePoint(for target: ClickTarget, tick index: Int, cursor: CGPoint?) -> CGPoint? {
+        switch target {
+        case .currentCursor:
+            return cursor
+        case .fixed(let point):
+            return point
+        case .sequence(let points):
+            // An empty sequence never gets a tick, but must not crash if it somehow does.
+            guard !points.isEmpty else {
+                return nil
+            }
+            let count = points.count
+            return points[((index - 1) % count + count) % count].point
+        }
+    }
+
     // MARK: - Private
+
+    /// The scheduler steps of a run, or `nil` for an empty sequence.
+    private static func steps(for target: ClickTarget, interval: ClickInterval) -> ClickScheduler.Steps? {
+        switch target {
+        case .currentCursor, .fixed:
+            ClickScheduler.Steps(interval.duration)
+        case .sequence(let points):
+            ClickScheduler.Steps(points.map(\.delay))
+        }
+    }
 
     /// Stops the run with `runID`, or whichever run is active when `runID` is `nil`. A stale tick of an earlier run
     /// therefore cannot stop a newer one.
@@ -167,13 +220,9 @@ final class ClickEngine: Sendable {
         // The failsafe needs the cursor even for a fixed target (the corner check), so it is read once per tick.
         let needsCursor = configuration.target == .currentCursor || failsafe != nil
         let cursor = needsCursor ? cursorLocation() : nil
-        let target: CGPoint? =
-            switch configuration.target {
-            case .currentCursor: cursor
-            case .fixed(let point): point
-            // Phase 2: T-1102 clicks the points in turn. Until then a sequence has no target, so every tick is skipped.
-            case .sequence: nil
-            }
+        let target = Self.basePoint(for: configuration.target, tick: tick.index, cursor: cursor).map { point in
+            offsetPoint(point, target: configuration.target, radius: configuration.positionOffset)
+        }
 
         if let target {
             switch failsafe?.evaluate(cursor: cursor, target: target) ?? .proceed {
@@ -204,6 +253,21 @@ final class ClickEngine: Sendable {
         if configuration.stopCondition.isSatisfied(clicks: runClicks, elapsed: tick.deadline) {
             stop(reason: .conditionMet, runID: runID)
         }
+    }
+
+    /// Moves `point` by a fresh random offset, or returns it unchanged for `.currentCursor` or a radius of zero.
+    private func offsetPoint(_ point: CGPoint, target: ClickTarget, radius: Int) -> CGPoint {
+        // A posted click moves the pointer, so offsetting the cursor target would walk away from it click by click.
+        if case .currentCursor = target {
+            return point
+        }
+        let range = ClickConfiguration.positionOffsetRange
+        let radius = min(max(radius, range.lowerBound), range.upperBound)
+        guard radius > 0 else {
+            return point
+        }
+        let offset = positionOffset(radius)
+        return CGPoint(x: point.x + offset.dx, y: point.y + offset.dy)
     }
 
     private func setSkippingInsideOwnWindow(_ isSkipping: Bool, runID: UInt64) {

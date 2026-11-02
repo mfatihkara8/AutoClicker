@@ -19,7 +19,9 @@ struct ClickEngineTests {
         init(
             counter: ClickCounter = ClickCounter(),
             failsafe: MockFailsafe? = MockFailsafe(),
-            cursor: CGPoint? = CGPoint(x: 500, y: 400)
+            cursor: CGPoint? = CGPoint(x: 500, y: 400),
+            jitterOffset: @escaping @Sendable (ClickInterval) -> Duration = { $0.jitterOffset() },
+            positionOffset: @escaping @Sendable (Int) -> CGVector = { PositionOffset.random(radius: $0) }
         ) {
             let queue = DispatchQueue(label: "ClickEngineTests", qos: .userInteractive)
             let cursorBox = OSAllocatedUnfairLock<CGPoint?>(initialState: cursor)
@@ -32,7 +34,9 @@ struct ClickEngineTests {
                 counter: counter,
                 failsafe: failsafe,
                 cursorLocation: { cursorBox.withLock { $0 } },
-                queue: queue)
+                queue: queue,
+                jitterOffset: jitterOffset,
+                positionOffset: positionOffset)
             let stops = stops
             engine.onStop = { stops.record($0) }
         }
@@ -51,14 +55,33 @@ struct ClickEngineTests {
         milliseconds: Int = 1,
         target: ClickTarget = .fixed(CGPoint(x: 10, y: 20)),
         stopCondition: StopCondition = .never,
-        modifiers: ClickModifiers = []
+        modifiers: ClickModifiers = [],
+        positionOffset: Int = 0
     ) -> ClickConfiguration {
         ClickConfiguration(
             clickType: clickType,
             interval: ClickInterval(milliseconds: milliseconds),
             target: target,
             stopCondition: stopCondition,
-            modifiers: modifiers)
+            modifiers: modifiers,
+            positionOffset: positionOffset)
+    }
+
+    private static let sequencePoints = [
+        CGPoint(x: 10, y: 10), CGPoint(x: 200, y: 20), CGPoint(x: 30, y: 300),
+    ]
+
+    /// A sequence of `sequencePoints`, each `delay` milliseconds apart. The delays are long enough that a busy test
+    /// machine does not skip a tick, which would also skip its point.
+    private static func sequence(delay: Int = 15) -> ClickTarget {
+        .sequence(sequencePoints.map { ClickPoint(point: $0, delayMilliseconds: delay) })
+    }
+
+    /// The fixed offset every stubbed draw returns.
+    private static let stubOffset = CGVector(dx: 3, dy: -4)
+
+    private static func offset(_ point: CGPoint, by vector: CGVector = stubOffset) -> CGPoint {
+        CGPoint(x: point.x + vector.dx, y: point.y + vector.dy)
     }
 
     // MARK: - Click types and targets
@@ -286,6 +309,294 @@ struct ClickEngineTests {
         engine.stop()
 
         #expect(!engine.isSkippingInsideOwnWindow)
+    }
+
+    // MARK: - Sequences
+
+    @Test func sequenceClicksThePointsInOrderAndWraps() async {
+        let harness = Harness()
+
+        harness.engine.start(Self.configuration(target: Self.sequence(), stopCondition: .afterClicks(7)))
+        #expect(await harness.waitForStop())
+
+        let points = Self.sequencePoints
+        #expect(harness.poster.posts.map(\.point) == points + points + [points[0]])
+        #expect(harness.stops.values == [.conditionMet])
+    }
+
+    @Test(arguments: ClickType.allCases)
+    func everySequencePointUsesTheSharedClickTypeAndModifiers(_ clickType: ClickType) async {
+        let harness = Harness()
+        let modifiers: ClickModifiers = [.option, .command]
+
+        harness.engine.start(
+            Self.configuration(
+                clickType, target: Self.sequence(delay: 1), stopCondition: .afterClicks(6), modifiers: modifiers))
+        #expect(await harness.waitForStop())
+
+        #expect(harness.poster.count == 6)
+        #expect(harness.poster.posts.allSatisfy { $0.type == clickType && $0.modifiers == modifiers })
+        #expect(Set(harness.poster.posts.map { "\($0.point)" }).isSubset(of: Self.sequencePoints.map { "\($0)" }))
+    }
+
+    @Test func afterClicksCountsEveryPostedSequenceClick() async throws {
+        let harness = Harness()
+
+        harness.engine.start(Self.configuration(target: Self.sequence(delay: 1), stopCondition: .afterClicks(5)))
+        #expect(await harness.waitForStop())
+        try await Task.sleep(for: .milliseconds(10))
+        await drain(harness.queue)
+
+        #expect(harness.poster.count == 5)
+        #expect(harness.counter.value == 5)
+        #expect(harness.stops.values == [.conditionMet])
+    }
+
+    @Test func afterDurationEndsASequenceRun() async {
+        let harness = Harness()
+
+        harness.engine.start(
+            Self.configuration(target: Self.sequence(delay: 10), stopCondition: .afterDuration(.milliseconds(35))))
+        #expect(await harness.waitForStop())
+
+        // Ticks are due at 10, 20 and 30 ms; the next one (40 ms) is past the limit.
+        #expect((1...3).contains(harness.poster.count))
+        #expect(harness.stops.values == [.conditionMet])
+    }
+
+    @Test func sequenceTickIndexPicksItsPoint() {
+        let target = Self.sequence()
+        let points = Self.sequencePoints
+        let cursor = CGPoint(x: 1, y: 1)
+        for index in 1...9 {
+            #expect(ClickEngine.basePoint(for: target, tick: index, cursor: cursor) == points[(index - 1) % 3])
+        }
+        // A skipped tick skips its point: after tick 2, tick 6 clicks the third point, not the next one in line.
+        #expect(ClickEngine.basePoint(for: target, tick: 6, cursor: cursor) == points[2])
+        #expect(ClickEngine.basePoint(for: target, tick: 3_000_001, cursor: cursor) == points[0])
+    }
+
+    @Test func basePointForOtherTargets() {
+        let cursor = CGPoint(x: 7, y: 8)
+        let fixed = CGPoint(x: 70, y: 80)
+        #expect(ClickEngine.basePoint(for: .currentCursor, tick: 5, cursor: cursor) == cursor)
+        #expect(ClickEngine.basePoint(for: .currentCursor, tick: 5, cursor: nil) == nil)
+        #expect(ClickEngine.basePoint(for: .fixed(fixed), tick: 5, cursor: cursor) == fixed)
+        #expect(ClickEngine.basePoint(for: .sequence([]), tick: 1, cursor: cursor) == nil)
+    }
+
+    @Test func sequenceRunsOnTheDelaysOfItsPoints() async {
+        let harness = Harness()
+        let clock = ContinuousClock()
+        let start = clock.now
+        // Ticks are due at 1, 151 and 152 ms. With the 1 ms interval instead, all three would land within 3 ms.
+        let target = ClickTarget.sequence([
+            ClickPoint(point: CGPoint(x: 1, y: 1), delayMilliseconds: 1),
+            ClickPoint(point: CGPoint(x: 2, y: 2), delayMilliseconds: 150),
+        ])
+
+        harness.engine.start(Self.configuration(milliseconds: 1, target: target, stopCondition: .afterClicks(3)))
+        #expect(await harness.waitForStop())
+        let elapsed = clock.now - start
+
+        #expect(harness.poster.posts.map(\.point) == [CGPoint(x: 1, y: 1), CGPoint(x: 2, y: 2), CGPoint(x: 1, y: 1)])
+        #expect(elapsed >= .milliseconds(151))
+    }
+
+    @Test func sequenceJitterComesFromTheIntervalAndIsCappedByTheShortestDelay() async {
+        let jitters = CallRecorder<Int>()
+        let harness = Harness(jitterOffset: { interval in
+            jitters.record(interval.effectiveJitterMilliseconds)
+            return .zero
+        })
+        var configuration = Self.configuration(
+            target: .sequence([
+                ClickPoint(point: CGPoint(x: 1, y: 1), delayMilliseconds: 11),
+                ClickPoint(point: CGPoint(x: 2, y: 2), delayMilliseconds: 40),
+            ]),
+            stopCondition: .afterClicks(3))
+        configuration.interval = ClickInterval(milliseconds: 500, jitterMilliseconds: 100)
+
+        harness.engine.start(configuration)
+        #expect(await harness.waitForStop())
+
+        // ±100 ms is requested, but the 11 ms delay caps it at ±5 ms.
+        #expect(jitters.count >= 3)
+        #expect(jitters.values.allSatisfy { $0 == 5 })
+    }
+
+    @Test func emptySequenceEndsAtOnceWithConditionMet() async throws {
+        let offsets = CallRecorder<Int>()
+        let harness = Harness(positionOffset: { radius in
+            offsets.record(radius)
+            return .zero
+        })
+
+        harness.engine.start(Self.configuration(target: .sequence([]), positionOffset: 10))
+        #expect(await harness.waitForStop())
+        try await Task.sleep(for: .milliseconds(20))
+        await drain(harness.queue)
+
+        #expect(harness.stops.values == [.conditionMet])
+        #expect(!harness.engine.isRunning)
+        #expect(harness.poster.count == 0)
+        #expect(harness.counter.value == 0)
+        #expect(harness.failsafe?.evaluations.isEmpty == true)
+        #expect(offsets.count == 0)
+    }
+
+    @Test func canStartAgainAfterAnEmptySequence() async {
+        let harness = Harness()
+
+        harness.engine.start(Self.configuration(target: .sequence([])))
+        #expect(await harness.waitForStop())
+        harness.engine.start(Self.configuration(stopCondition: .afterClicks(2)))
+        #expect(await waitUntil { harness.stops.count == 2 })
+
+        #expect(harness.poster.count == 2)
+        #expect(harness.stops.values == [.conditionMet, .conditionMet])
+    }
+
+    // MARK: - Position offset
+
+    @Test func offsetMovesEveryFixedClick() async {
+        let radii = CallRecorder<Int>()
+        let harness = Harness(positionOffset: { radius in
+            radii.record(radius)
+            return Self.stubOffset
+        })
+        let point = CGPoint(x: 100, y: 100)
+
+        harness.engine.start(
+            Self.configuration(target: .fixed(point), stopCondition: .afterClicks(3), positionOffset: 25))
+        #expect(await harness.waitForStop())
+
+        #expect(harness.poster.posts.map(\.point) == Array(repeating: Self.offset(point), count: 3))
+        #expect(radii.values == [25, 25, 25])
+    }
+
+    @Test func offsetMovesEverySequenceClick() async {
+        let harness = Harness(positionOffset: { _ in Self.stubOffset })
+
+        harness.engine.start(
+            Self.configuration(target: Self.sequence(), stopCondition: .afterClicks(4), positionOffset: 50))
+        #expect(await harness.waitForStop())
+
+        let points = Self.sequencePoints
+        #expect(harness.poster.posts.map(\.point) == (points + [points[0]]).map { Self.offset($0) })
+    }
+
+    @Test func eachClickDrawsItsOwnOffset() async {
+        let draws = OSAllocatedUnfairLock(initialState: 0)
+        let harness = Harness(positionOffset: { _ in
+            draws.withLock { count in
+                count += 1
+                return CGVector(dx: count, dy: 0)
+            }
+        })
+        let point = CGPoint(x: 100, y: 100)
+
+        harness.engine.start(
+            Self.configuration(target: .fixed(point), stopCondition: .afterClicks(3), positionOffset: 5))
+        #expect(await harness.waitForStop())
+
+        // Offsets are relative to the target every time, never to the previous click.
+        #expect(harness.poster.posts.map(\.point.x) == [101, 102, 103])
+    }
+
+    @Test func offsetIsIgnoredForTheCurrentCursor() async {
+        let radii = CallRecorder<Int>()
+        let cursor = CGPoint(x: 640, y: 480)
+        let harness = Harness(
+            cursor: cursor,
+            positionOffset: { radius in
+                radii.record(radius)
+                return Self.stubOffset
+            })
+
+        harness.engine.start(
+            Self.configuration(target: .currentCursor, stopCondition: .afterClicks(3), positionOffset: 200))
+        #expect(await harness.waitForStop())
+
+        #expect(harness.poster.posts.map(\.point) == [cursor, cursor, cursor])
+        #expect(radii.count == 0)
+    }
+
+    @Test(arguments: [0, -5])
+    func offsetOfZeroOrLessNeverDraws(_ radius: Int) async {
+        let radii = CallRecorder<Int>()
+        let harness = Harness(positionOffset: { radius in
+            radii.record(radius)
+            return Self.stubOffset
+        })
+        let point = CGPoint(x: 10, y: 20)
+
+        harness.engine.start(
+            Self.configuration(target: .fixed(point), stopCondition: .afterClicks(2), positionOffset: radius))
+        #expect(await harness.waitForStop())
+
+        #expect(harness.poster.posts.map(\.point) == [point, point])
+        #expect(radii.count == 0)
+    }
+
+    @Test func offsetRadiusIsClampedToTheSupportedRange() async {
+        let radii = CallRecorder<Int>()
+        let harness = Harness(positionOffset: { radius in
+            radii.record(radius)
+            return .zero
+        })
+
+        harness.engine.start(Self.configuration(stopCondition: .afterClicks(2), positionOffset: 5_000))
+        #expect(await harness.waitForStop())
+
+        #expect(radii.values == [200, 200])
+    }
+
+    @Test func defaultOffsetStaysInsideTheDisk() async {
+        let harness = Harness()
+        let point = CGPoint(x: 1_000, y: 1_000)
+
+        harness.engine.start(
+            Self.configuration(target: .fixed(point), stopCondition: .afterClicks(20), positionOffset: 30))
+        #expect(await harness.waitForStop())
+
+        #expect(harness.poster.count == 20)
+        for post in harness.poster.posts {
+            #expect(hypot(post.point.x - point.x, post.point.y - point.y) <= 30.000_001)
+        }
+        // With a 30-point radius, twenty identical draws would be a broken random source.
+        #expect(Set(harness.poster.posts.map { "\($0.point)" }).count > 1)
+    }
+
+    @Test func ownWindowFailsafeChecksTheOffsetPointAndCornerUsesTheCursor() async {
+        let failsafe = MockFailsafe(decision: .skipInsideOwnWindow)
+        let cursor = CGPoint(x: 900, y: 700)
+        let harness = Harness(failsafe: failsafe, cursor: cursor, positionOffset: { _ in Self.stubOffset })
+        let point = CGPoint(x: 100, y: 100)
+
+        harness.engine.start(Self.configuration(target: .fixed(point), positionOffset: 10))
+        #expect(await waitUntil { failsafe.evaluations.count >= 3 })
+        harness.engine.stop()
+        await drain(harness.queue)
+
+        #expect(harness.poster.count == 0)
+        #expect(
+            failsafe.evaluations.allSatisfy {
+                $0 == MockFailsafe.Evaluation(cursor: cursor, target: Self.offset(point))
+            })
+    }
+
+    @Test func sequenceFailsafeChecksEachOffsetPoint() async {
+        let failsafe = MockFailsafe()
+        let cursor = CGPoint(x: 900, y: 700)
+        let harness = Harness(failsafe: failsafe, cursor: cursor, positionOffset: { _ in Self.stubOffset })
+
+        harness.engine.start(
+            Self.configuration(target: Self.sequence(), stopCondition: .afterClicks(3), positionOffset: 10))
+        #expect(await harness.waitForStop())
+
+        let expected = Self.sequencePoints.map { MockFailsafe.Evaluation(cursor: cursor, target: Self.offset($0)) }
+        #expect(failsafe.evaluations == expected)
     }
 
     // MARK: - Counter
