@@ -5,7 +5,7 @@
 # Usage (from anywhere; the script works from the repository root):
 #
 #     scripts/build-release.sh               # Release build, verified, packaged as build/Release/AutoClicker-<version>.dmg
-#     scripts/build-release.sh --profiling   # the same Release build, debuggable, with no DMG
+#     scripts/build-release.sh --profiling   # the same Release build, debuggable, with diagnostics, with no DMG
 #     scripts/build-release.sh NAME=value    # any number of extra build settings, passed on to xcodebuild
 #
 # Signing: the project's automatic signing with the team's "Apple Development" identity. The app is never ad-hoc
@@ -14,7 +14,10 @@
 # `CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application"`; README.md has the notarization steps.
 #
 # --profiling keeps the `com.apple.security.get-task-allow` entitlement, so `leaks` and Instruments can attach to the
-# app. That entitlement must never ship, so this build gets its own folder (build/Release/Profiling) and no DMG.
+# app. That entitlement must never ship, so this build gets its own folder (build/Release/Profiling) and no DMG. It also
+# adds the DIAGNOSTICS compilation condition, so `AUTOCLICKER_DRY_RUN=<seconds>` can drive a run that posts nothing
+# for scripts/measure-performance.sh. The shipped build has neither, and this script checks that it has no
+# diagnostics code.
 #
 # Everything is written under build/, which is git-ignored.
 
@@ -80,7 +83,12 @@ xcodebuild_args=(
     ENABLE_CODE_COVERAGE=NO
     CLANG_COVERAGE_MAPPING=NO
 )
-if ! $profiling; then
+if $profiling; then
+    xcodebuild_args+=(
+        # The diagnostics harness (AutoClicker/App/Diagnostics), on top of whatever the Release configuration sets.
+        'SWIFT_ACTIVE_COMPILATION_CONDITIONS=$(inherited) DIAGNOSTICS'
+    )
+else
     xcodebuild_args+=(
         # Xcode adds get-task-allow to every build signed with a development identity, which lets any process with
         # the user's rights attach a debugger to the app. A shipped build must not carry it.
@@ -144,6 +152,20 @@ else
     fi
     [[ -n "$timestamp" ]] || fail "the release build has no secure timestamp"
     echo "Entitlements:    no get-task-allow"
+fi
+
+if ! $profiling; then
+    # The diagnostics harness swaps in a poster that clicks nothing and fakes Accessibility trust. It must never ship.
+    # Its environment variable names, or its types as Swift mangles them (length-prefixed). Plain file names are not
+    # enough: the empty `#if DIAGNOSTICS` files are still compiled, so their paths appear in the debug map. The symbols
+    # are captured first: with pipefail, `nm | grep -q` can fail on SIGPIPE when grep stops at the first match.
+    binary="$app/Contents/MacOS/AutoClicker"
+    harness='AUTOCLICKER_(SNAPSHOTS|DRY_RUN)|[0-9]+(DiagnosticsSession|SnapshotDriver|DryRunDriver|NoOpEventPoster)'
+    symbols="$(nm "$binary" 2> /dev/null || true)"
+    if grep -qE "$harness" <<<"$symbols" || grep -qaE "$harness" "$binary"; then
+        fail "the release build contains the diagnostics harness"
+    fi
+    echo "Diagnostics:     none"
 fi
 
 step "Gatekeeper assessment"
