@@ -249,7 +249,7 @@ M9 is done before M6 (see [ROADMAP.md](ROADMAP.md)).
     - Every point uses the shared click type and modifiers.
     - The offset stays inside the disk and is ignored for Current cursor.
     - The own-window failsafe uses the offset point.
-    - An empty sequence never starts.
+    - An empty sequence ends at once with `.conditionMet` (the view model never starts one).
 
 ## M12: Click tab: sequence editor and offset
 

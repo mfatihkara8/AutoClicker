@@ -5,19 +5,20 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** Phase 2 (M10–M13), see docs/SPEC.md §7
+**Current milestone:** Phase 2 (M10–M13) implemented; manual checks SC-12 to SC-15 and the 0.2.0 release are next
 
 ## Now
-- [ ] T-1101, T-1102: engine sequences and position offset (wave 2)
-- [ ] T-1201 to T-1203: Click tab sequence editor, offset, summaries (wave 2)
-- [ ] T-1301 to T-1303: profiles (wave 2)
+- [ ] Manual checks SC-12 to SC-15 and a visual pass over the Click tab (three target modes, Edit Points sheet), the Profiles tab and the menu bar Profiles submenu
+- [ ] Release 0.2.0 (docs/RELEASING.md), after the user's go
 
 ## Next
-- Manual checks after Phase 2: SC-12 to SC-15 (needs the user at the Mac).
 - First-launch check of the published 0.1.0 DMG.
 - SC-7 (secondary monitor): untested, no second display.
 
 ## Done
+- [x] T-1301 to T-1303 (2026-11-02): profile operations in the view model (saved immediately), Profiles tab, menu bar Profiles submenu, Main tab profile line
+- [x] T-1201 to T-1203 (2026-11-02): Cursor/Fixed/Sequence target modes with session memory, Edit Points sheet with Add Point countdown, offset row, interval note, summaries, empty-sequence warning and Start blocking
+- [x] T-1101, T-1102 (2026-11-02): cyclic-step scheduler (O(1) skip-ahead, jitter capped by the shortest step), engine sequences and uniform-disk position offset
 - [x] T-1001 (2026-11-02): `ClickPoint`, `.sequence` target, `positionOffset`, `Profile` with name rules, `AppSettings` profiles, settings schema v4 with v1–v3 migration
 - [x] README redesign (2026-10-31): centered header with the light/dark icon, download button and badges, four screenshots, features, install, usage, FAQ; release, performance and notarization steps moved to `docs/RELEASING.md`; ADR-010 records the free-signing release decision
 - [x] T-604 (2026-10-29): `v0.1.0` tagged, repo made public, GitHub Release published with `AutoClicker-0.1.0.dmg` (SHA-256 75436604…1f67)

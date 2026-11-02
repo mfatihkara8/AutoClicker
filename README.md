@@ -165,7 +165,7 @@ Mac App Store apps must run in the App Sandbox, and a sandboxed app can't post c
 </details>
 
 ## Roadmap
-- **Planned next:** saved profiles, multi-point and sequential clicking, and a random offset around the target.
+- **Next release (already on `main`):** saved profiles, click sequences with a delay per point, and a random offset around the target.
 - **Later:** recording and playing back mouse and keyboard macros.
 
 The details are in [docs/ROADMAP.md](docs/ROADMAP.md).

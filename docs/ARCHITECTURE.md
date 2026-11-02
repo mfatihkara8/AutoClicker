@@ -46,18 +46,24 @@ AutoClicker/                      Xcode project root
 │   │   ├── Main/
 │   │   │   ├── MainView.swift          top mode: TabView(.tabBarOnly); sidebar mode: NavigationSplitView (15+); banner + toolbar per tab
 │   │   │   ├── ToolbarRunPresentation.swift toolbar status/tooltip text (tested)
-│   │   │   ├── AppTab.swift            .main/.click/.shortcuts/.about
+│   │   │   ├── AppTab.swift            .main/.click/.profiles/.shortcuts/.about
+│   │   │   ├── ProfilePresentation.swift "Profile: Name (modified)" + Save Changes title (tested)
+│   │   │   ├── ProfileNameRejection+Display.swift
 │   │   │   ├── WindowNavigation.swift  @Observable selected tab (not persisted; resets to Main)
 │   │   │   ├── AppCommands.swift       About → About tab, ⌘, → Shortcuts tab, Help → Report a Bug…
 │   │   │   ├── MainViewModel.swift     @Observable @MainActor
 │   │   │   └── StopReason+Display.swift localized stop-reason text (kept out of Core)
-│   │   ├── Tabs/                       MainTab (+ ClickCountView), ClickTab (two grouped Forms), ShortcutsTab, AboutTab;
+│   │   ├── Tabs/                       MainTab (+ ClickCountView, ActiveProfileLine), ClickTab (two grouped Forms), ProfilesTab,
+│   │   │                               ShortcutsTab, AboutTab;
 │   │   │                               SettingsSummary, AppInfo, BugReportLink (pure, tested);
 │   │   │                               WindowMetrics (default/min content size 760×520)
 │   │   ├── Components/                 PermissionBanner, StartStopButton (large + round icon), RunStatusIndicator, ClickTypeSection,
 │   │   │                               IntervalSection, TargetSection, StopConditionSection,
 │   │   │                               ModifierToggleRow, KeyCap, NumberField, WarningLabel; pure clamping
-│   │   │                               editors (ClickIntervalEditor, ClickTargetEditor, StopConditionEditor)
+│   │   │                               editors (ClickIntervalEditor, ClickTargetEditor, StopConditionEditor,
+│   │   │                               ClickSequenceEditor, PositionOffsetEditor) and ClickTargetMemory (session-only
+│   │   │                               last fixed point / point list); SequenceEditorSheet + SequencePointPicking;
+│   │   │                               ProfileNameSheet
 │   │   └── MenuBar/
 │   │       ├── MenuBarContent.swift
 │   │       ├── MenuBarLabel.swift      idle/running SF Symbol; reads only isRunning
@@ -68,6 +74,8 @@ AutoClicker/                      Xcode project root
 │   │   │   ├── ClickScheduler.swift
 │   │   │   ├── ClickConfiguration.swift
 │   │   │   ├── ClickType.swift
+│   │   │   ├── ClickPoint.swift        sequence point + delay before its click
+│   │   │   ├── PositionOffset.swift    uniform disk sampling for the random offset (ADR-012)
 │   │   │   ├── ClickModifiers.swift    option set ⇧ ⌃ ⌥ ⌘, stored as names
 │   │   │   ├── StopCondition.swift
 │   │   │   ├── StopReason.swift
@@ -130,8 +138,9 @@ AutoClicker/                      Xcode project root
 | `ClickModifiers` | `OptionSet`, `Sendable`, `Codable` | Shift, Control, Option, Command held for every click. Encoded as an array of names in ⌃⌥⇧⌘ order. |
 | `ClickConfiguration` | `struct`, `Sendable`, `Codable` | Aggregates the click type, modifiers, interval, target, stop condition and `positionOffset` (0–200 pt). It is the persisted working configuration and the profile snapshot. |
 | `ClickCounter` | `final class`, `Sendable` | Wraps `OSAllocatedUnfairLock<Int>` and provides `increment()`, `value` and `reset()`. |
-| `ClickScheduler` | `final class` | Drives the click loop on a serial queue using `DispatchSourceTimer`. Computes the absolute deadline `start + n × interval`, plus jitter. |
-| `ClickEngine` | `final class` | Owns the scheduler and coordinates each tick (see below). Takes `start(_:)` and `stop()`. Reports the end of a run through `onStop(StopReason)`. |
+| `ClickScheduler` | `final class` | Drives the click loop on a serial queue using `DispatchSourceTimer`. Computes absolute deadlines over a cyclic `Steps` list: tick *n* is due at `start + Σ steps(1…n)`, plus jitter. A single interval is the one-step list; a sequence's steps are its points' delays (ADR-011). Jitter is capped at (shortest step − 1 ms) / 2 so ticks never reorder. |
+| `PositionOffset` | `enum` | Draws the per-click offset uniformly from a disk (angle 2π·a, distance r·√u); radius 0 draws nothing (ADR-012). |
+| `ClickEngine` | `final class` | Owns the scheduler and coordinates each tick: resolve the base point (cursor, fixed, or `points[(n−1) mod k]`), add the offset (fixed and sequence only), run the failsafe on the cursor and the offset point, post, count, check the stop condition. An empty sequence ends at once with `.conditionMet`. Takes `start(_:)` and `stop()`. Reports the end of a run through `onStop(StopReason)`. |
 | `StopReason` | `enum` | `.user`, `.hotkey`, `.emergencyEscape`, `.cornerFailsafe`, `.conditionMet` or `.permissionLost` |
 
 `ClickEngine` does the following on each tick:
@@ -183,9 +192,11 @@ Each one leads to `engine.stop()`, then `onStop(reason)`, then the ViewModel on 
 - shows the stop reason.
 
 **Pick Location:**
-1. The ViewModel runs a 3 s countdown on the main actor.
+1. The ViewModel runs a 3 s countdown on the main actor, with a purpose: the fixed target or a new sequence point.
 2. It reads `ScreenGeometry.currentCursorLocation()`.
-3. It stores the result as `.fixed(point)`.
+3. It stores the result as `.fixed(point)`, or appends a `ClickPoint` whose delay is the interval in ms (clamped).
+
+**Profiles:** the ViewModel holds `profiles` and `activeProfileID` next to the working configuration. Applying copies a snapshot into `configuration` (rejected while clicking or picking); every profile operation saves immediately through `SettingsStore` (ADR-013).
 
 ## Composition
 `AutoClickerApp` owns `MainViewModel` as `@State`, so clicking continues while the window is closed. It calls `activate()` (registers the saved start/stop shortcut, F6 by default) and flushes pending settings on `willTerminateNotification`. When the process runs as the unit-test host (`XCTestConfigurationFilePath` is set), it skips `activate()` and uses a throwaway `UserDefaults` suite, so tests never register real hotkeys or touch the user's settings.

@@ -106,7 +106,7 @@ Implements the flow in section 2. It is `@Observable` and `@MainActor`.
 
 ### 3.5 User interface
 - **Window and tabs:**
-  - One main window with four tabs: **Main**, **Click**, **Shortcuts** and **About**. It always opens on Main; the last tab is not remembered.
+  - One main window with five tabs: **Main**, **Click**, **Profiles**, **Shortcuts** and **About** (Profiles since Phase 2, §7.3). It always opens on Main; the last tab is not remembered.
   - Tabs use the native SwiftUI `TabView`, centered at the top of the window, with no custom styling. On macOS 26 and later this is the system's Liquid Glass tab bar.
   - The window opens with the tabs at the top. One toolbar button at the leading edge switches the tabs to a sidebar; pressing it again (or collapsing the sidebar) moves them back to the top. The last choice is remembered. Top mode is a native `TabView` with `.tabBarOnly`; sidebar mode is a `NavigationSplitView` with a list of the same tabs, because on macOS `TabView`'s `sidebarAdaptable` offers no way to detect a collapsed sidebar. Collapsing that sidebar returns to top mode. Sidebar mode needs macOS 15 or later; on macOS 14 the tabs stay at the top with the standard look and the button is hidden.
   - The toolbar shows no window title and has no empty hoverable or clickable regions.
@@ -116,7 +116,7 @@ Implements the flow in section 2. It is `@Observable` and `@MainActor`.
   1. Active/Inactive status.
   2. The big total click counter with Reset.
   3. The big Start/Stop button.
-  4. A one-line summary of the current settings, for example "⇧-Left click · 100 ms · Cursor · Never stops".
+  4. The active profile line (Phase 2, §7.3), then a one-line summary of the current settings, for example "⇧-Left click · 100 ms · Cursor · Never stops".
   5. The last stop reason.
   6. Warnings, such as the own-window warning.
   7. The shortcut hint, for example "F6 start/stop · Esc stop".

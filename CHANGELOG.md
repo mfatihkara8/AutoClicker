@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Click sequences: the Target section's new **Sequence** mode clicks up to 50 points in order, each after its own delay, then starts over. **Edit Points…** opens a sheet to add points with the 3-second Pick Location countdown, edit X, Y and the delay, reorder and remove them. Click type, modifiers, jitter and the stop condition apply to every point, and timing stays drift-free.
+- Random position offset: each click on a fixed point or a sequence point can land up to 0–200 pt away, drawn uniformly from a disk. It is off by default and not used with the current cursor.
+- Profiles: a new **Profiles** tab saves the click settings under a name (up to 50), applies, renames and deletes them, and saves changes to the active profile. The menu bar extra has a **Profiles** submenu, and the Main tab shows the active profile and whether it was modified. The start/stop shortcut stays global.
+- Settings schema version 4, which stores sequences, the offset and the profiles. Older settings migrate automatically.
+
+### Changed
+- The Main tab summary names a sequence and the offset, for example "Left click · Sequence of 3 points ± 5 pt · Never stops". Start is disabled for an empty sequence, with a warning.
+
 ## [0.1.0] - 2026-10-29
 
 The first release: the Phase 1 auto clicker. It is signed with an Apple Development certificate but not notarized, so macOS warns on the first launch; the README's *First launch* section explains how to open it.
