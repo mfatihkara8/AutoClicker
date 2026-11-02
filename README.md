@@ -27,6 +27,9 @@ Native Swift and SwiftUI · Apple Silicon and Intel · Free and open source
   - Set the interval in hours, minutes, seconds and milliseconds, down to 1 ms, with optional random jitter.
   - Clicks follow a drift-free schedule, so the rate stays accurate over long runs.
 - **Click where you want:** at the pointer, or at a fixed point on any display. **Pick Location** captures the point for you.
+- **Click sequences:** click up to 50 points in turn, each after its own delay, then start over. Add points with a 3-second pick countdown.
+- **Random offset:** let each click on a fixed point or sequence point land up to 200 pt away, so clicking looks less mechanical.
+- **Profiles:** save your settings under a name, and switch between them from the **Profiles** tab or the menu bar.
 - **Stop on your terms:** after a number of clicks, after a set time, or never.
 - **Modifier clicks:** hold <kbd>⇧</kbd> <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>⌘</kbd> while clicking, for example ⌘-click links to open them in new tabs.
 - **Works from any app:** <kbd>F6</kbd> starts and stops clicking wherever you are, and you can record your own shortcut instead.
@@ -165,8 +168,8 @@ Mac App Store apps must run in the App Sandbox, and a sandboxed app can't post c
 </details>
 
 ## Roadmap
-- **Next release (already on `main`):** saved profiles, click sequences with a delay per point, and a random offset around the target.
-- **Later:** recording and playing back mouse and keyboard macros.
+- **Done in 0.2.0:** saved profiles, click sequences with a delay per point, and a random offset around the target.
+- **Planned:** recording and playing back mouse and keyboard macros.
 
 The details are in [docs/ROADMAP.md](docs/ROADMAP.md).
 
