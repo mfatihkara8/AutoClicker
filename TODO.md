@@ -5,16 +5,16 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** Phase 2 (M10–M13) complete; the 0.2.0 release is next (after the user's go)
+**Current milestone:** none — 0.2.0 (Phase 2) released 2026-11-02; Phase 3 (macros) needs a new ADR first
 
 ## Now
-- [ ] Release 0.2.0 (docs/RELEASING.md), after the user's go
+- [ ] First-launch check of the published 0.2.0 DMG (download, Open Anyway, permission kept on update)
 
 ## Next
-- First-launch check of the published 0.1.0 DMG.
 - SC-7 (secondary monitor): untested, no second display.
 
 ## Done
+- [x] 0.2.0 released (2026-11-02): `v0.2.0` tag, GitHub Release with `AutoClicker-0.2.0.dmg` (3.2 MB, SHA-256 45e6fe20…833c)
 - [x] Phase 2 hands-on pass (2026-11-02), automated with real events (`scripts/live-check.sh`): all 18 checks passed — Add Point through the real sheet, Profiles submenu (checkmark moves on apply), 12/12 real clicks in sequence order with ⌘ and the offset inside 8 pt
 - [x] Phase 2 verification (2026-11-02): SC-12 (150/150, order kept), SC-13 (all clicks ≤ 20 pt, varied), SC-14 (profile survives relaunch, restores every field) as acceptance tests; SC-15 dry run: 6000/6000 clicks, 3.3% CPU while clicking, 0% idle, 0 leaks; 28 UI snapshots reviewed (scripts/diagnose-ui.sh); fixed sidebar clipping (window widens by 200 pt) and a 3 pt Click tab scroll with the banner
 - [x] T-1301 to T-1303 (2026-11-02): profile operations in the view model (saved immediately), Profiles tab, menu bar Profiles submenu, Main tab profile line
