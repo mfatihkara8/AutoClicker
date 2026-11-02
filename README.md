@@ -17,7 +17,7 @@ Native Swift and SwiftUI · Apple Silicon and Intel · Free and open source
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![MIT license](https://img.shields.io/github/license/mfatihkara8/AutoClicker?color=lightgrey)](LICENSE)
 
-<img src="docs/images/main-tab.png" alt="The AutoClicker window on its Main tab, with the click counter and the Start button" width="720">
+<img src="docs/images/main-tab.png" alt="The AutoClicker window on its Main tab, with the active profile, the click counter and the Start button" width="720">
 
 </div>
 
@@ -45,7 +45,7 @@ Native Swift and SwiftUI · Apple Silicon and Intel · Free and open source
   - It makes no network requests and collects no data.
 
 <p align="center">
-  <img src="docs/images/click-tab.png" alt="The Click tab with the click type, modifier keys, interval, target and stop condition" width="720">
+  <img src="docs/images/click-tab.png" alt="The Click tab with a three-point click sequence, a random offset, the click type, interval and stop condition" width="720">
 </p>
 
 ## Install
@@ -78,6 +78,15 @@ shasum -a 256 ~/Downloads/AutoClicker-*.dmg
 1. On the **Click** tab, choose the click type, interval, target and when to stop.
 2. Press <kbd>F6</kbd> to start. Press it again to stop.
 
+**Click several points:**
+1. Under **Target**, choose **Sequence** and click **Edit Points…**.
+2. Click **Add Point**, and move the pointer to the spot within 3 seconds.
+3. Repeat for each point, and set each point's delay.
+
+AutoClicker clicks the points in order, then starts over.
+
+**Save a setup:** on the **Profiles** tab, click **Save as New Profile…**. Apply it later from that tab, or from the **Profiles** submenu of the menu bar extra.
+
 | Shortcut | What it does |
 |---|---|
 | <kbd>F6</kbd> | Starts or stops clicking from any app. You can record your own on the **Shortcuts** tab. |
@@ -85,11 +94,11 @@ shasum -a 256 ~/Downloads/AutoClicker-*.dmg
 | Screen corner | Moving the pointer into any corner of a screen stops clicking. |
 | <kbd>⌘</kbd> <kbd>,</kbd> | Opens the **Shortcuts** tab. |
 
-The menu bar extra shows the status and the click count, and has Start/Stop. AutoClicker keeps running there after you close its window. To quit, choose **Quit AutoClicker** in the menu bar extra, or press <kbd>⌘</kbd> <kbd>Q</kbd> while the window is active.
+The menu bar extra shows the status and the click count, and has Start/Stop and your profiles. AutoClicker keeps running there after you close its window. To quit, choose **Quit AutoClicker** in the menu bar extra, or press <kbd>⌘</kbd> <kbd>Q</kbd> while the window is active.
 
 <p align="center">
-  <img src="docs/images/shortcuts-tab.png" alt="The Shortcuts tab, with the start/stop shortcut, its Change and Reset buttons, and the Esc emergency stop" width="49%">
-  <img src="docs/images/about-tab.png" alt="The About tab, with the version, the Accessibility permission state, the GitHub link and Report a Bug" width="49%">
+  <img src="docs/images/profiles-tab.png" alt="The Profiles tab, with the current settings, Save Changes, Save as New Profile, and three saved profiles" width="49%">
+  <img src="docs/images/sequence-sheet.png" alt="The Edit Points sheet, with three points, their X and Y positions and delays, and Add Point" width="49%">
 </p>
 
 ## FAQ
@@ -156,6 +165,18 @@ Any of these stops clicking:
 - Move the pointer into any corner of the screen.
 
 AutoClicker also skips clicks that would land on its own window, so you can always reach the Stop button.
+
+</details>
+
+<details>
+<summary><b>How do I update?</b></summary>
+<br>
+
+1. Download the new DMG from the [latest release](https://github.com/mfatihkara8/AutoClicker/releases/latest).
+2. Quit AutoClicker.
+3. Drag the new app onto **Applications** and replace the old one.
+
+Your settings and profiles carry over. macOS may ask you to confirm the first launch again with **Open Anyway**.
 
 </details>
 
