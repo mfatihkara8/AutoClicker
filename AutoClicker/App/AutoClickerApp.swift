@@ -95,11 +95,6 @@ struct AutoClickerApp: App {
         // the first scene it still opens at launch.
         Window("AutoClicker", id: Self.mainWindowID) {
             MainView(viewModel: viewModel, navigation: navigation, appInfo: appInfo, bugReportURL: bugReportURL)
-                // Every tab is laid out for this size, so the window may grow but never shrink below it (SPEC §3.5).
-                .frame(
-                    minWidth: WindowMetrics.defaultContentSize.width,
-                    minHeight: WindowMetrics.defaultContentSize.height
-                )
                 #if DIAGNOSTICS
                     // View-only preferences such as the sidebar layout go to the throwaway suite too.
                     .defaultAppStorage(diagnostics?.defaults ?? .standard)

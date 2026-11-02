@@ -7,4 +7,8 @@ import CoreGraphics
 /// about 470 pt available), so it uses two columns instead of scrolling.
 enum WindowMetrics {
     static let defaultContentSize = CGSize(width: 760, height: 520)
+
+    /// The sidebar's width in the sidebar layout (macOS 15 and later). The window's minimum width grows by this much
+    /// there, so every tab keeps its default width next to the sidebar.
+    static let sidebarWidth: CGFloat = 200
 }
