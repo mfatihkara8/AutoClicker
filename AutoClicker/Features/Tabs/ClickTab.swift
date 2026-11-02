@@ -21,8 +21,15 @@ struct ClickTab: View {
             Form {
                 TargetSection(
                     target: $viewModel.configuration.target,
-                    pickLocationCountdown: viewModel.pickLocationCountdown,
+                    memory: viewModel.targetMemory,
+                    pickLocationCountdown: viewModel.fixedTargetPickCountdown,
                     isTargetInsideOwnWindow: viewModel.isTargetInsideOwnWindow,
+                    sequencePicking: SequencePointPicking(
+                        countdown: viewModel.addSequencePointCountdown,
+                        canAddPoint: viewModel.canAddSequencePoint,
+                        isLocked: viewModel.isRunning,
+                        onAddPoint: viewModel.addSequencePoint,
+                        onCancelAddPoint: viewModel.cancelAddSequencePoint),
                     onPickLocation: viewModel.pickLocation,
                     onCancelPickLocation: viewModel.cancelPickLocation
                 )

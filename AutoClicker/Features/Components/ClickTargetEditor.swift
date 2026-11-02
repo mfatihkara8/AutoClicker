@@ -9,7 +9,6 @@ struct ClickTargetEditor: Equatable {
     enum Kind: CaseIterable, Hashable {
         case currentCursor
         case fixed
-        // Phase 2: T-1201 offers this kind in the picker and edits the points.
         case sequence
     }
 
@@ -18,12 +17,12 @@ struct ClickTargetEditor: Equatable {
 
     /// The edited target.
     private(set) var target: ClickTarget
-    /// The point used when switching from the cursor to a fixed position, so a previously used point comes back.
-    let fallbackPoint: CGPoint
+    /// The values used when switching kinds, so a previously used point or point list comes back.
+    let memory: ClickTargetMemory
 
-    init(target: ClickTarget, fallbackPoint: CGPoint = .zero) {
+    init(target: ClickTarget, memory: ClickTargetMemory = ClickTargetMemory()) {
         self.target = target
-        self.fallbackPoint = fallbackPoint
+        self.memory = memory
     }
 
     var kind: Kind {
@@ -40,15 +39,14 @@ struct ClickTargetEditor: Equatable {
             case .currentCursor:
                 target = .currentCursor
             case .fixed:
-                target = .fixed(fallbackPoint)
+                target = .fixed(memory.fixedPoint)
             case .sequence:
-                // Phase 2: T-1201 brings back the session's last sequence instead of starting empty.
-                target = .sequence([])
+                target = .sequence(Array(memory.sequencePoints.prefix(ClickTarget.maxSequencePoints)))
             }
         }
     }
 
-    /// The fixed X coordinate, rounded to whole points, or zero while the cursor is the target.
+    /// The fixed X coordinate, rounded to whole points, or zero while the target is not a fixed point.
     var x: Int {
         get { Self.wholePoints(fixedPoint?.x ?? 0) }
         set {
@@ -57,12 +55,28 @@ struct ClickTargetEditor: Equatable {
         }
     }
 
-    /// The fixed Y coordinate, rounded to whole points, or zero while the cursor is the target.
+    /// The fixed Y coordinate, rounded to whole points, or zero while the target is not a fixed point.
     var y: Int {
         get { Self.wholePoints(fixedPoint?.y ?? 0) }
         set {
             guard let point = fixedPoint else { return }
             target = .fixed(CGPoint(x: point.x, y: CGFloat(newValue.clamped(to: Self.coordinateRange))))
+        }
+    }
+
+    /// The sequence's points, or none while the target is not a sequence.
+    ///
+    /// Setting it is ignored unless the target is a sequence, so a stale editor (a sheet still open after a profile
+    /// changed the target) cannot turn another target back into a sequence. At most `ClickTarget.maxSequencePoints`
+    /// points are kept.
+    var sequencePoints: [ClickPoint] {
+        get {
+            guard case .sequence(let points) = target else { return [] }
+            return points
+        }
+        set {
+            guard case .sequence = target else { return }
+            target = .sequence(Array(newValue.prefix(ClickTarget.maxSequencePoints)))
         }
     }
 
@@ -72,7 +86,7 @@ struct ClickTargetEditor: Equatable {
     }
 
     /// Converts without trapping: `Int(_:)` crashes on non-finite or huge values, which corrupt settings could hold.
-    private static func wholePoints(_ value: CGFloat) -> Int {
+    static func wholePoints(_ value: CGFloat) -> Int {
         guard value.isFinite else { return 0 }
         let bounds = CGFloat(coordinateRange.lowerBound)...CGFloat(coordinateRange.upperBound)
         return Int(value.rounded().clamped(to: bounds))
