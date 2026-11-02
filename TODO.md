@@ -14,6 +14,7 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - SC-7 (secondary monitor): untested, no second display.
 
 ## Done
+- [x] README for 0.2.0 (2026-11-02): new screenshots via `scripts/showcase.sh` (Main, Click sequence, Profiles, Edit Points; en_US numbers, pointers removed), usage for sequences and profiles, update FAQ, "How it was built" (vibe coded with Claude Code) section and badge
 - [x] 0.2.0 released (2026-11-02): `v0.2.0` tag, GitHub Release with `AutoClicker-0.2.0.dmg` (3.2 MB, SHA-256 45e6fe20…833c)
 - [x] Phase 2 hands-on pass (2026-11-02), automated with real events (`scripts/live-check.sh`): all 18 checks passed — Add Point through the real sheet, Profiles submenu (checkmark moves on apply), 12/12 real clicks in sequence order with ⌘ and the offset inside 8 pt
 - [x] Phase 2 verification (2026-11-02): SC-12 (150/150, order kept), SC-13 (all clicks ≤ 20 pt, varied), SC-14 (profile survives relaunch, restores every field) as acceptance tests; SC-15 dry run: 6000/6000 clicks, 3.3% CPU while clicking, 0% idle, 0 leaks; 28 UI snapshots reviewed (scripts/diagnose-ui.sh); fixed sidebar clipping (window widens by 200 pt) and a 3 pt Click tab scroll with the banner
