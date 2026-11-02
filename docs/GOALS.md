@@ -39,3 +39,7 @@ Phase 1 is done when all of these pass. M6 in the [roadmap](ROADMAP.md) verifies
 | SC-9 | Moving the cursor into a screen corner stops the engine. |
 | SC-10 | A target inside the app's own window is skipped and a warning is shown. |
 | SC-11 | Idle CPU is about 0%, and Instruments shows no leaks after repeated start/stop cycles. |
+| SC-12 | A 3-point sequence with 200, 400 and 600 ms delays clicks the points in order. Over 60 s, the click count is within ±2% of 150. |
+| SC-13 | With a 20 pt offset on a fixed target, every click lands within 20 pt of the target, and the positions vary. |
+| SC-14 | A saved profile survives quitting and relaunching. Applying it restores every click setting. |
+| SC-15 | Phase 2 does not regress SC-6 or SC-11, measured with a sequence and an offset. |

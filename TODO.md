@@ -5,14 +5,18 @@ This is the live progress tracker. Task details are in [docs/TASKS.md](docs/TASK
 - Work on the **Now** section from top to bottom.
 - When a task is finished, tick it and move it to **Done**. If it changed behavior, also update [CHANGELOG.md](CHANGELOG.md).
 
-**Current milestone:** none — Phase 1 shipped as 0.1.0 (2026-10-29)
+**Current milestone:** Phase 2 (M10–M13), see docs/SPEC.md §7
 
 ## Now
-- [ ] First-launch check of the published DMG (download it, follow README › First launch on macOS 15+)
+- [ ] T-1001: Phase 2 model and settings schema v4 (wave 1)
+- [ ] T-1101, T-1102: engine sequences and position offset (wave 2)
+- [ ] T-1201 to T-1203: Click tab sequence editor, offset, summaries (wave 2)
+- [ ] T-1301 to T-1303: profiles (wave 2)
 
 ## Next
-- SC-7 (fixed target on a secondary monitor): untested, no second display; the user decided not to work on it for now.
-- Phase 2 planning (see docs/ROADMAP.md).
+- Manual checks after Phase 2: SC-12 to SC-15 (needs the user at the Mac).
+- First-launch check of the published 0.1.0 DMG.
+- SC-7 (secondary monitor): untested, no second display.
 
 ## Done
 - [x] README redesign (2026-10-31): centered header with the light/dark icon, download button and badges, four screenshots, features, install, usage, FAQ; release, performance and notarization steps moved to `docs/RELEASING.md`; ADR-010 records the free-signing release decision

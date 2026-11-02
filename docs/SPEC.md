@@ -151,11 +151,88 @@ Implements the flow in section 2. It is `@Observable` and `@MainActor`.
 Detailed conventions are in [RULES.md](RULES.md). The type layout is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 5. Out of scope for Phase 1
+Profiles and multi-point or sequential clicking came in Phase 2 (§7).
 - Macro recording and playback.
-- Profiles.
-- Multi-point or sequential clicking.
 - Mouse movement simulation.
 - Auto-update.
 
 ## 6. Acceptance criteria
 The authoritative list is in [GOALS.md § Success criteria](GOALS.md#success-criteria).
+
+## 7. Phase 2 requirements
+Phase 2 adds a random position offset, click sequences and profiles. Everything in sections 1 to 4 still applies.
+
+### 7.1 Random position offset ([ADR-012](DECISIONS.md#adr-012-random-position-offset-for-fixed-and-sequence-targets-only))
+- **Setting:** `ClickConfiguration.positionOffset`, a radius in points.
+  - It is an integer from 0 to 200. The default is 0, which means off.
+- **Behavior:**
+  - When the radius is above 0, each click lands on its target point moved by a random vector.
+  - The vector is drawn uniformly from a disk of that radius.
+  - Each click draws its own offset. Offsets never accumulate.
+- **Targets:**
+  - The offset applies to **fixed** and **sequence** targets only.
+  - With **Current cursor** it is ignored, because a posted click moves the pointer, so offsets would add up into a random walk.
+  - In that mode the UI disables the setting and shows the hint "Not used with Current cursor."
+- **Failsafes:**
+  - The own-window check uses the offset point.
+  - The corner check still uses the cursor.
+- **Tests:** the engine takes its random source as an injected function, so tests are deterministic.
+
+### 7.2 Click sequence ([ADR-011](DECISIONS.md#adr-011-click-sequences-with-a-per-point-delay-on-a-cyclic-deadline-schedule))
+- **Target:** a third target kind, `.sequence([ClickPoint])`.
+  - A `ClickPoint` holds a point in CG global space and `delayMilliseconds`.
+  - The delay is the wait before that point's click. It runs from 1 ms to 24 h.
+- **Size:** a sequence holds 1 to 50 points.
+  - An empty sequence cannot start. The Main tab warns "Add at least one point to the sequence."
+- **Timing:**
+  - Tick *n* clicks point (*n* − 1) mod *k*, where *k* is the number of points.
+  - Tick *n* is due at the sum of the delays of the points clicked by ticks 1 to *n* (wrapping around the list), plus that tick's jitter offset.
+  - Deadlines stay absolute and drift-free. Missed ticks are skipped, as in Phase 1.
+  - The first click therefore fires after the first point's delay.
+- **Interval and jitter:**
+  - The h/m/s/ms interval is not used in sequence mode. Its "Every" row is disabled with the note "Each point sets its own delay."
+  - Jitter still applies to every click.
+- **Shared settings:**
+  - Click type, modifiers, the position offset and the stop condition apply to every point.
+  - `.afterClicks(n)` counts every posted click.
+- **UI:**
+  - The Target section's "Click at" picker offers **Cursor**, **Fixed** and **Sequence**.
+  - In Sequence mode the section shows the point count and an **Edit Points…** button. The button opens a sheet with one row per point: number, X, Y and delay (ms).
+  - The sheet has **Add Point**, which runs the 3-second Pick Location countdown and appends the cursor position, with its delay defaulting to the interval in milliseconds.
+  - Each row has **Remove**, **Move Up** and **Move Down**, and the sheet has a **Done** button.
+  - Everything is locked while clicking.
+  - Switching between Cursor, Fixed and Sequence keeps the other modes' last values for the session.
+- **Summary:** the Main tab summary names the sequence, for example "Left click · Sequence of 3 points · Never stops".
+
+### 7.3 Profiles ([ADR-013](DECISIONS.md#adr-013-profiles-as-named-configuration-snapshots-in-the-settings-envelope))
+- **Model:** a `Profile` has an `id` (UUID), a `name` and a `ClickConfiguration` snapshot.
+  - Names are trimmed, 1 to 40 characters long, and unique ignoring case.
+  - Up to 50 profiles can be stored.
+  - The start/stop shortcut is global, not part of a profile.
+- **Working configuration:**
+  - The working configuration is what the Click tab edits and what Start uses. It stays separate from the profiles.
+  - **Applying** a profile copies its configuration into the working configuration. This is not allowed while clicking.
+  - The **active profile** is the one last applied or saved.
+  - The active profile is **modified** while the working configuration differs from its snapshot.
+- **Profiles tab:** a fifth tab, placed between Click and Shortcuts. It is a grouped `Form` with:
+  - A list of profiles. Each row shows the name, a one-line settings summary and a checkmark on the active profile.
+  - Row actions: **Apply**, **Rename…** and **Delete…**. Delete asks for confirmation first.
+  - **Save as New Profile…**, which asks for a name and makes the new profile active.
+  - **Save Changes to “Name”**, enabled only while the active profile is modified.
+  - An empty state that explains profiles.
+  - The list may scroll inside the form when there are many profiles.
+- **Menu bar extra:** a **Profiles** submenu lists the profiles with a checkmark on the active one. Choosing a profile applies it.
+  - The submenu is disabled while clicking and hidden when there are no profiles.
+- **Main tab:** above the settings summary, a line shows "Profile: Name", or "Profile: Name (modified)". The line is absent when no profile is active.
+
+### 7.4 Persistence: settings schema version 4
+- **Envelope:** `{"version": 4, "configuration": {...}, "toggleHotkey": {...}, "profiles": [...], "activeProfileID": "…" | null}`.
+- **Configuration changes:**
+  - `configuration.positionOffset` is new.
+  - `target` gains `{"kind": "sequence", "points": [{"x": …, "y": …, "delayMilliseconds": …}]}`.
+- **Profiles:** each profile is stored as `{"id", "name", "configuration"}`, and its configuration uses the same version 4 shape.
+- **Migration:** versions 1 to 3 load with a position offset of 0, no profiles and no active profile.
+- **Repairs on load:**
+  - An `activeProfileID` that matches no profile loads as `nil`.
+  - Duplicate or invalid profile names are repaired on load: trimmed, cut to 40 characters, and numbered to be unique.
+

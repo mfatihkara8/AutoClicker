@@ -126,3 +126,48 @@ Never edit a past decision. To change one, add a new ADR that supersedes it and 
   - The signature stays stable across releases while the certificate's name stays the same, so the Accessibility permission survives updates.
   - The signature shows the certificate holder's Apple ID email and name.
   - Moving to Developer ID later changes the signature once, so users grant Accessibility again. The notarization steps are ready in [RELEASING.md](RELEASING.md#notarization).
+
+## ADR-011: Click sequences with a per-point delay on a cyclic deadline schedule
+**Status:** Accepted (2026-11-02)
+
+- **Context:** Phase 2 adds clicking several points in turn, each with its own delay. ADR-005's scheduler has one fixed interval, and its deadlines are `start + n × interval`.
+- **Decision:**
+  - A sequence is a target kind, `.sequence([ClickPoint])`, so click type, modifiers, offset and stop conditions keep working unchanged.
+  - Each point's delay is the wait **before** its click.
+  - The scheduler is generalized from one interval to a cyclic list of step durations. Tick *n* is due at the sum of the first *n* steps (wrapping around), plus that tick's jitter.
+  - A single interval is the special case of a one-step list. Skip-ahead after a stall still jumps in O(1), using whole cycles.
+- **Consequences:**
+  - The run stays drift-free and never burst-fires, as before.
+  - The h/m/s/ms interval is unused in sequence mode, and jitter still applies.
+  - Phase 1 behavior is unchanged, since every Phase 1 run is a one-step list.
+
+## ADR-012: Random position offset for fixed and sequence targets only
+**Status:** Accepted (2026-11-02)
+
+- **Context:** a random offset around the target makes clicking look less mechanical. However, a posted click moves the pointer. With the Current cursor target, the next click would then start from the previous offset point.
+- **Decision:**
+  - The offset is a radius from 0 to 200 points. Each click draws a vector uniformly from that disk, and the vector is never carried over.
+  - The offset applies to fixed and sequence targets.
+  - It is ignored, and disabled in the UI, for Current cursor.
+  - The random source is injected into the engine.
+- **Consequences:**
+  - No random walk can happen.
+  - Tests are deterministic.
+  - The own-window failsafe checks the offset point, while the corner failsafe keeps using the cursor.
+
+## ADR-013: Profiles as named configuration snapshots in the settings envelope
+**Status:** Accepted (2026-11-02)
+
+- **Context:** users want to save and switch between named setups. The options were separate files, separate `UserDefaults` keys, or one envelope.
+- **Decision:**
+  - Profiles live in the existing versioned settings envelope (schema version 4), next to the working configuration and the active profile's id. ADR-007 already chose one envelope, so this keeps one load and one save, and one migration path.
+  - A profile is a snapshot of `ClickConfiguration`.
+  - The working configuration stays separate:
+    - applying a profile copies the snapshot,
+    - editing never changes a profile until the user saves the changes.
+  - The start/stop shortcut stays global.
+- **Consequences:**
+  - The settings stay a single small JSON value. With 50 profiles it is still only a few tens of kilobytes.
+  - "Modified" is a plain equality check.
+  - Older settings migrate with no profiles.
+

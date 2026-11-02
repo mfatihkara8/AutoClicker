@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-This is a native macOS AutoClicker built with Swift 6, SwiftUI and `@Observable`, targeting macOS 14+. The Xcode project was created with Xcode 27; Phase 1 (M1–M5, M7–M9) is implemented. Check `TODO.md` for the current task.
+This is a native macOS AutoClicker built with Swift 6, SwiftUI and `@Observable`, targeting macOS 14+. The Xcode project was created with Xcode 27; Phase 1 (M1–M9) shipped as 0.1.0; Phase 2 (M10–M13, SPEC §7) is in progress. Check `TODO.md` for the current task.
 
 ## Commands
 
@@ -43,7 +43,7 @@ xcodebuild -project AutoClicker.xcodeproj -scheme AutoClicker -destination 'plat
 | `docs/RULES.md` | You need coding, concurrency, testing, git or docs conventions. Follow them. |
 | `docs/DECISIONS.md` | You need the reason behind a fixed choice. To change one, add a new ADR instead of editing an old one. |
 | `docs/GOALS.md` | You need the success criteria (SC-1…SC-11) that each milestone is checked against. |
-| `docs/ROADMAP.md`, `docs/TASKS.md` | You need the milestones (M0–M9) or the tasks (`T-xxx`), each with its "Done when" criteria. |
+| `docs/ROADMAP.md`, `docs/TASKS.md` | You need the milestones (M0–M13) or the tasks (`T-xxx`), each with its "Done when" criteria. |
 | `docs/RELEASING.md` | You build, check or publish a release, measure performance, or set up notarization. |
 | `TODO.md` | You need to know what to work on now. |
 

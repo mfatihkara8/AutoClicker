@@ -89,10 +89,29 @@ Added after M8 and done **before** M6, so that 0.1.0 ships with it.
 - **Deliverables:** the tab shell with the toolbar Start/Stop and menu commands, the Main, Click, Shortcuts and About tabs, and the bug report issue form.
 - **Done when:** every tab fits the default window size without scrolling, on macOS 26 the tab bar is the system Liquid Glass one, and the menu commands select the right tabs.
 
-## Phase 2: Productivity (planned)
-- Profiles: saved and named configurations.
-- Multi-point and sequential clicking with a per-point delay.
-- A random position offset within a radius.
+## Phase 2: Productivity
+Phase 2 is specified in [SPEC.md §7](SPEC.md#7-phase-2-requirements) and checked against SC-12 to SC-15.
+
+### M10: Phase 2 model and settings schema
+- **Goal:** one shared model for the whole phase, so that the engine, Click tab and profile work can run in parallel.
+- **Deliverables:**
+  - `ClickPoint` and the `.sequence` target.
+  - `positionOffset`.
+  - `Profile`, with the profiles in `AppSettings`.
+  - Settings schema version 4, with migration from versions 1 to 3.
+- **Done when:** schema version 4 round-trips every new field, older settings migrate, and invalid profile data is repaired.
+
+### M11: Engine: sequences and position offset
+- **Goal:** the engine clicks sequences on a cyclic deadline schedule and applies the random offset ([ADR-011](DECISIONS.md#adr-011-click-sequences-with-a-per-point-delay-on-a-cyclic-deadline-schedule), [ADR-012](DECISIONS.md#adr-012-random-position-offset-for-fixed-and-sequence-targets-only)).
+- **Done when:** scheduler and engine tests cover point order, cyclic deadlines, skip-ahead, the offset disk and the failsafes with offsets.
+
+### M12: Click tab: sequence editor and offset
+- **Goal:** the user can build a sequence, set a random offset, and see both in the summaries.
+- **Done when:** the Cursor, Fixed and Sequence modes, the Edit Points sheet with Add Point, and the offset row all work while the tab still fits 760×520.
+
+### M13: Profiles
+- **Goal:** save, apply, update, rename and delete named profiles from the Profiles tab and the menu bar ([ADR-013](DECISIONS.md#adr-013-profiles-as-named-configuration-snapshots-in-the-settings-envelope)).
+- **Done when:** the profile operations are unit-tested in the view model, the Profiles tab and the menu bar submenu work, and the Main tab shows the active profile.
 
 ## Phase 3: Macros (planned)
 - Recording and playback of mouse and keyboard sequences.

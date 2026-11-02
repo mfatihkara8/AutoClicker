@@ -218,3 +218,77 @@ M9 is done before M6 (see [ROADMAP.md](ROADMAP.md)).
 - **T-604: Tag 0.1.0**
   - **Files:** `CHANGELOG.md`
   - **Done when:** the `0.1.0` entry is written and a git tag is created.
+
+## M10: Phase 2 model and settings schema
+
+- **T-1001: Add the Phase 2 model and settings schema version 4**
+  - **Files:**
+    - `Core/Engine/ClickPoint.swift`, `Core/Engine/ClickTarget.swift`, `Core/Engine/ClickConfiguration.swift`
+    - `Services/Profile.swift`, `Services/AppSettings.swift`, `Services/SettingsStore.swift`
+    - the tests
+  - **Done when:**
+    - `.sequence([ClickPoint])` and `positionOffset` encode as SPEC §7.4 describes.
+    - `AppSettings` carries `profiles` and `activeProfileID`.
+    - Version 4 round-trips.
+    - Versions 1 to 3 migrate.
+    - A dangling active id becomes `nil`, and bad profile names are repaired.
+    - Phase 1 behavior is unchanged.
+
+## M11: Engine: sequences and position offset
+
+- **T-1101: Generalize the scheduler to cyclic steps**
+  - **Files:** `Core/Engine/ClickScheduler.swift`, `ClickSchedulerTests`
+  - **Done when:**
+    - Deadlines follow the cyclic sum of steps plus jitter.
+    - Skip-ahead stays O(1).
+    - All existing scheduler tests pass with a one-step list.
+- **T-1102: Click sequences and offsets in the engine**
+  - **Files:** `Core/Engine/ClickEngine.swift`, `Core/Engine/PositionOffset.swift`, the tests
+  - **Done when:**
+    - Points are clicked in order and wrap around.
+    - Every point uses the shared click type and modifiers.
+    - The offset stays inside the disk and is ignored for Current cursor.
+    - The own-window failsafe uses the offset point.
+    - An empty sequence never starts.
+
+## M12: Click tab: sequence editor and offset
+
+- **T-1201: Target modes and the Edit Points sheet**
+  - **Files:**
+    - `Features/Components/TargetSection.swift`, `Features/Components/ClickTargetEditor.swift`
+    - a new `SequenceEditorSheet`
+    - `MainViewModel` (Add Point countdown)
+  - **Done when:**
+    - Cursor, Fixed and Sequence switch while keeping each mode's last values.
+    - Points can be added (3 s countdown), edited, removed and reordered.
+    - Editing is locked while clicking.
+- **T-1202: Offset row and interval note**
+  - **Files:** `TargetSection`, `IntervalSection`
+  - **Done when:**
+    - The offset (0–200 pt) is editable for Fixed and Sequence, and disabled with its hint for Cursor.
+    - The "Every" row is disabled with its note in Sequence mode.
+- **T-1203: Summaries and warnings**
+  - **Files:** `SettingsSummary`, `MenuBarPresentation`, `MainViewModel`
+  - **Done when:**
+    - The summaries name the sequence and the offset.
+    - An empty sequence disables Start with its warning.
+    - All of this is unit-tested.
+
+## M13: Profiles
+
+- **T-1301: Profile operations in the view model**
+  - **Files:** `MainViewModel`, the tests
+  - **Done when:**
+    - Save as new, apply, save changes, rename and delete work, with the name rules and the 50-profile limit.
+    - Modified tracking works.
+    - Applying is rejected while clicking.
+    - Profiles persist through `SettingsStore`.
+- **T-1302: The Profiles tab**
+  - **Files:** `Features/Tabs/ProfilesTab.swift`, `Features/Main/AppTab.swift`, `MainView`
+  - **Done when:** the tab from SPEC §7.3 works in both top-tab and sidebar modes and fits the default window size.
+- **T-1303: The menu bar submenu and the Main tab line**
+  - **Files:** `MenuBarContent`, `MenuBarPresentation`, `MainTab`
+  - **Done when:**
+    - The Profiles submenu applies profiles and is disabled while clicking.
+    - The Main tab shows the active profile and its modified state.
+
