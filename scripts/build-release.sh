@@ -160,7 +160,7 @@ if ! $profiling; then
     # enough: the empty `#if DIAGNOSTICS` files are still compiled, so their paths appear in the debug map. The symbols
     # are captured first: with pipefail, `nm | grep -q` can fail on SIGPIPE when grep stops at the first match.
     binary="$app/Contents/MacOS/AutoClicker"
-    harness='AUTOCLICKER_(SNAPSHOTS|DRY_RUN|LIVE_CHECK)|[0-9]+(DiagnosticsSession|SnapshotDriver|DryRunDriver|LiveCheckDriver|OwnAccessibilityClient|NoOpEventPoster)'
+    harness='AUTOCLICKER_(SNAPSHOTS|DRY_RUN|LIVE_CHECK|SHOWCASE)|[0-9]+(DiagnosticsSession|SnapshotDriver|DryRunDriver|LiveCheckDriver|ShowcaseDriver|OwnAccessibilityClient|NoOpEventPoster)'
     symbols="$(nm "$binary" 2> /dev/null || true)"
     if grep -qE "$harness" <<<"$symbols" || grep -qaE "$harness" "$binary"; then
         fail "the release build contains the diagnostics harness"
