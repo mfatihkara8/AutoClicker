@@ -81,7 +81,10 @@ final class MainViewModelHarness {
     }
 
     /// Builds a new view model on the shared doubles. `viewModel` is the one most tests use.
-    func makeViewModel() -> MainViewModel {
+    ///
+    /// - Parameter settingsStore: The store to load from and save to, `store` by default. Pass a new store on the same
+    ///   suite to simulate a relaunch.
+    func makeViewModel(settingsStore: SettingsStore? = nil) -> MainViewModel {
         let environment = environment
         return MainViewModel(
             engine: engine,
@@ -90,7 +93,7 @@ final class MainViewModelHarness {
             hotkeys: hotkeys,
             shortcutRecorder: recorder,
             permissionManager: permissionManager,
-            settingsStore: store,
+            settingsStore: settingsStore ?? store,
             geometrySnapshot: {
                 environment.geometryReads += 1
                 return Self.geometry
