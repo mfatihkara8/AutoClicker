@@ -16,6 +16,7 @@ Native Swift and SwiftUI · Apple Silicon and Intel · Free and open source
 [![macOS 14 or later](https://img.shields.io/badge/macOS-14%2B-111111?logo=apple&logoColor=white)](#install)
 [![Swift 6](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://www.swift.org)
 [![MIT license](https://img.shields.io/github/license/mfatihkara8/AutoClicker?color=lightgrey)](LICENSE)
+[![Vibe coded with Claude Code](https://img.shields.io/badge/vibe_coded_with-Claude_Code-D97757?logo=claude&logoColor=white)](#how-it-was-built)
 
 <img src="docs/images/main-tab.png" alt="The AutoClicker window on its Main tab, with the active profile, the click counter and the Start button" width="720">
 
@@ -235,6 +236,23 @@ Release builds, performance checks and notarization are covered in [docs/RELEASI
 | [ROADMAP.md](docs/ROADMAP.md), [TASKS.md](docs/TASKS.md) | Milestones and tasks |
 | [RELEASING.md](docs/RELEASING.md) | Building, checking and publishing a release |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
+
+## How it was built
+AutoClicker is **vibe coded**. The app's code, tests and documentation were written by Claude in [Claude Code](https://claude.com/claude-code). The author described what the app should do and steered every step.
+
+- **The author:**
+  - set the goals and sketched the interface,
+  - answered the design questions and made the product decisions,
+  - tested the app by hand and approved each release.
+- **Claude:**
+  - turned the goals into a specification, decision records and milestones,
+  - built each milestone with several agents working in parallel,
+  - reviewed and merged their work.
+- **Checks:**
+  - Every change passes the unit tests and a strict linter before it is merged.
+  - Each release is measured against the [success criteria](docs/GOALS.md#success-criteria), such as click accuracy and CPU use.
+
+The commits that Claude wrote carry a `Co-Authored-By: Claude` line, so the history shows who did what.
 
 ## License
 [MIT](LICENSE) © 2026 Mehmet Fatih Kara
