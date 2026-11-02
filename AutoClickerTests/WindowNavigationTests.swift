@@ -16,6 +16,6 @@ struct WindowNavigationTests {
     }
 
     @Test func tabsAreInSpecOrder() {
-        #expect(AppTab.allCases == [.main, .click, .shortcuts, .about])
+        #expect(AppTab.allCases == [.main, .click, .profiles, .shortcuts, .about])
     }
 }
