@@ -48,6 +48,17 @@ struct SettingsSummary: Equatable {
             return String(
                 localized: "At \(x), \(y)",
                 comment: "Settings summary: every click lands on a fixed point; the arguments are its X and Y.")
+        case .sequence(let points):
+            // Phase 2: T-1203 owns the final summary wording (SPEC §7.2), including the interval part.
+            let count = points.count.formatted(.number.locale(locale))
+            if points.count == 1 {
+                return String(
+                    localized: "Sequence of \(count) point",
+                    comment: "Settings summary: the clicks follow a sequence of exactly one point; the argument is 1.")
+            }
+            return String(
+                localized: "Sequence of \(count) points",
+                comment: "Settings summary: the clicks follow a sequence of points; the argument is how many.")
         }
     }
 

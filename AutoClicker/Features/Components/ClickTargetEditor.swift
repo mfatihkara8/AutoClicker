@@ -9,6 +9,8 @@ struct ClickTargetEditor: Equatable {
     enum Kind: CaseIterable, Hashable {
         case currentCursor
         case fixed
+        // Phase 2: T-1201 offers this kind in the picker and edits the points.
+        case sequence
     }
 
     /// Generous enough for any real display arrangement, small enough that the value always fits in an `Int`.
@@ -29,6 +31,7 @@ struct ClickTargetEditor: Equatable {
             switch target {
             case .currentCursor: .currentCursor
             case .fixed: .fixed
+            case .sequence: .sequence
             }
         }
         set {
@@ -38,6 +41,9 @@ struct ClickTargetEditor: Equatable {
                 target = .currentCursor
             case .fixed:
                 target = .fixed(fallbackPoint)
+            case .sequence:
+                // Phase 2: T-1201 brings back the session's last sequence instead of starting empty.
+                target = .sequence([])
             }
         }
     }

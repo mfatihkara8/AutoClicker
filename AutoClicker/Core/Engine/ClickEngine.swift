@@ -6,7 +6,7 @@ import os
 ///
 /// On every tick, on the engine's serial click queue, it:
 /// 1. reads the cursor and resolves the target (`.currentCursor` uses the cursor; a tick with no readable cursor is
-///    skipped; `.fixed(p)` uses `p`),
+///    skipped; `.fixed(p)` uses `p`; `.sequence` is skipped until T-1102 implements it),
 /// 2. asks the failsafe what to do (`nil` failsafe means always proceed),
 /// 3. posts the click with the run's modifiers,
 /// 4. increments the shared total `ClickCounter` and the run's own click count,
@@ -171,6 +171,8 @@ final class ClickEngine: Sendable {
             switch configuration.target {
             case .currentCursor: cursor
             case .fixed(let point): point
+            // Phase 2: T-1102 clicks the points in turn. Until then a sequence has no target, so every tick is skipped.
+            case .sequence: nil
             }
 
         if let target {

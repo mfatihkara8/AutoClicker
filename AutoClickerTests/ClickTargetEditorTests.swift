@@ -74,4 +74,26 @@ struct ClickTargetEditorTests {
         #expect(ClickTargetEditor.coordinateRange.contains(editor.x))
         #expect(ClickTargetEditor.coordinateRange.contains(editor.y))
     }
+
+    @Test func readsTheSequenceKind() {
+        let points = [ClickPoint(point: CGPoint(x: 1, y: 2), delayMilliseconds: 10)]
+        let editor = ClickTargetEditor(target: .sequence(points))
+        #expect(editor.kind == .sequence)
+        #expect(editor.x == 0)
+        #expect(editor.y == 0)
+    }
+
+    @Test func settingCoordinatesForASequenceIsIgnored() {
+        let points = [ClickPoint(point: CGPoint(x: 1, y: 2), delayMilliseconds: 10)]
+        var editor = ClickTargetEditor(target: .sequence(points))
+        editor.x = 5
+        editor.y = 5
+        #expect(editor.target == .sequence(points))
+    }
+
+    @Test func switchingFromASequenceToFixedUsesTheFallbackPoint() {
+        var editor = ClickTargetEditor(target: .sequence([]), fallbackPoint: CGPoint(x: 10, y: 20))
+        editor.kind = .fixed
+        #expect(editor.target == .fixed(CGPoint(x: 10, y: 20)))
+    }
 }
