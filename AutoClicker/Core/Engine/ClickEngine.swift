@@ -109,7 +109,8 @@ final class ClickEngine: Sendable {
             // scheduler run behind. Lock order is always engine, then scheduler; the scheduler never calls back while
             // holding its own lock.
             scheduler.start(
-                interval: configuration.interval,
+                steps: ClickScheduler.Steps(configuration.interval.duration),
+                jitterMilliseconds: configuration.interval.jitterMilliseconds,
                 limit: limit,
                 onTick: { [weak self] tick in
                     self?.handleTick(tick, runID: runID)
